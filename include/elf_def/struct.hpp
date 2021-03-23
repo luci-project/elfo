@@ -105,15 +105,15 @@ struct Structures : public Constants, public Types<C> {
 	union Sym_info {
 		unsigned char value;
 		struct {
-			sym_bind bind : 4;
 			sym_type type : 4;
+			sym_bind bind : 4;
 		} __attribute__((packed));
 	};
 
 	union Sym_other {
 		unsigned char value;
 		struct {
-			sym_visibility visibility : 4;
+			sym_visibility visibility : 2;
 			unsigned char             : 0;
 		} __attribute__((packed));
 	};
@@ -149,32 +149,39 @@ struct Structures : public Constants, public Types<C> {
 	struct Nhdr {
 		uint32_t n_namesz;  ///< Length of the note's name.
 		uint32_t n_descsz;  ///< Length of the note's descriptor
-		uint32_t n_type;    ///< Type of the note.
+		nhdr_type n_type;   ///< Type of the note.
 	};
 
 
 	/*! \brief Version definition */
 	struct Verdef {
-		uint16_t vd_version;     // Version revision
+		uint16_t vd_version;     ///< Version revision
 		union {
-			uint16_t vd_flags;       // Version information
+			uint16_t vd_flags;   ///< Version information flags
 			struct {
-				uint16_t vd_base : 1;
-				uint16_t vd_weak : 1;
+				uint16_t vd_base : 1;  ///< Version definition of the file itself.
+				uint16_t vd_weak : 1;  ///< Weak version identifier.
 				uint16_t         : 0;
 			} __attribute__((packed));
 		};
-		verdef_ndx vd_ndx;       ///< Version Index
-		uint16_t vd_cnt;         //< Number of associated aux entries
+		uint16_t vd_ndx;         ///< Version Index (in versym section)
+		uint16_t vd_cnt;         ///< Number of associated aux entries
 		uint32_t vd_hash;        ///< Version name hash value
 		uint32_t vd_aux;         ///< Offset in bytes to verdaux array
 		uint32_t vd_next;        ///< Offset in bytes to next verdef entry
 	} __attribute__((packed));
 
+	/*! \brief Auxialiary version information. */
+	struct Verdaux {
+	  uint32_t vda_name;   ///< Version or dependency names
+	  uint32_t vda_next;   ///< Offset in bytes to next verdaux entry
+	} __attribute__((packed));
+
+
 	/*! \brief Version dependency */
 	struct Verneed {
 		verneed_version vn_version;  ///< Version of structure
-		uint16_t vn_cnt;             ///<  Number of associated aux entries
+		uint16_t vn_cnt;             ///< Number of associated aux entries
 		uint32_t vn_file;            ///< Offset of filename for this dependency
 		uint32_t vn_aux;             ///< Offset in bytes to vernaux array
 		uint32_t vn_next;            ///< Offset in bytes to next verneed entry
@@ -184,14 +191,14 @@ struct Structures : public Constants, public Types<C> {
 	struct Vernaux {
 		uint32_t vna_hash;          ///< Hash value of dependency name */
 		union {
-			uint16_t value;         ///< Dependency specific information */
+			uint16_t vna_flags;         ///< Dependency specific information */
 			struct {
-				uint16_t      : 1;
-				uint16_t weak : 1;
-				uint16_t      : 0;
+				uint16_t          : 1;
+				uint16_t vna_weak : 1;
+				uint16_t          : 0;
 			} __attribute__((packed));
-		} vna_flags;
-		uint16_t vna_other;         ///< Unused 
+		};
+		uint16_t vna_other;         ///< Unused
 		uint32_t vna_name;          ///< Dependency name string offset
 		uint32_t vna_next;          ///< Offset in bytes to next vernaux entry
 	};

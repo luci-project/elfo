@@ -42,7 +42,7 @@ struct Constants {
 		ELFOSABI_ARM        = 97,
 		ELFOSABI_STANDALONE = 255
 	};
-	
+
 	enum ehdr_type : uint16_t {
 		ET_NONE   = 0,
 		ET_REL    = 1,
@@ -312,6 +312,7 @@ struct Constants {
 		PT_GNU_EH_FRAME = 0x6474e550,
 		PT_GNU_STACK    = 0x6474e551,
 		PT_GNU_RELRO    = 0x6474e552,
+		PT_GNU_PROPERTY = 0x6474e553,
 		PT_LOSUNW       = 0x6ffffffa,
 		PT_SUNWBSS      = 0x6ffffffa,
 		PT_SUNWSTACK    = 0x6ffffffb,
@@ -354,7 +355,21 @@ struct Constants {
 		STV_PROTECTED  = 3,
 	};
 
+	/*! \brief Symbol table index for undefined symbol */
 	static const uint32_t STN_UNDEF = 0;
+
+	enum sym_shndx_special : uint16_t {
+		SHN_UNDEF     = 0,       ///< Undefined section
+		SHN_LORESERVE = 0xff00,  ///< Start of reserved indices
+		SHN_LOPROC    = 0xff00,  ///< Start of processor-specific
+		SHN_LOOS      = 0xff20,  ///< Start of OS-specific
+		SHN_HIPROC    = 0xff1f,  ///< End of processor-specific
+		SHN_HIOS      = 0xff3f,  ///< End of OS-specific
+		SHN_ABS       = 0xfff1,  ///< Associated symbol is absolute
+		SHN_COMMON    = 0xfff2,  ///< Associated symbol is common
+		SHN_XINDEX    = 0xffff,  ///< Index is in extra table
+		SHN_HIRESERVE = 0xffff,  ///< End of reserved indices
+	};
 
 	enum rel_386 : uint32_t {
 		R_386_NONE                = 0,
@@ -476,7 +491,7 @@ struct Constants {
 		DT_FLAGS            = 30,  ///< Flags for the object being loaded
 		DT_PREINIT_ARRAY    = 32,  ///< Array with addresses of preinit functions
 		DT_PREINIT_ARRAYSZ  = 33,  ///< size in bytes of DT_PREINIT_ARRAY
-		DT_SYMTAB_SHNDX     = 34,  ///< Address of SYMTAB_SHNDX section 
+		DT_SYMTAB_SHNDX     = 34,  ///< Address of SYMTAB_SHNDX section
 		DT_NUM              = 35,  ///< Number used
 		DT_LOOS             = 0x6000000D,  ///< Start of OS-specific
 		DT_HIOS             = 0x6ffff000,  ///< End of OS-specific
@@ -500,7 +515,7 @@ struct Constants {
 		DT_GNU_LIBLIST      = 0x6ffffef9,  ///< Library list
 		DT_CONFIG           = 0x6ffffefa,  ///< Configuration information.
 		DT_DEPAUDIT         = 0x6ffffefb,  ///< Dependency auditing.
-		DT_AUDIT            = 0x6ffffefc,  ///< Object auditing. 
+		DT_AUDIT            = 0x6ffffefc,  ///< Object auditing.
 		DT_PLTPAD           = 0x6ffffefd,  ///< PLT padding.
 		DT_MOVETAB          = 0x6ffffefe,  ///< Move table.
 		DT_SYMINFO          = 0x6ffffeff,  ///< Syminfo table.
@@ -513,7 +528,7 @@ struct Constants {
 		DT_VERNEED          = 0x6ffffffe,  ///< Address of table with needed versions
 		DT_VERNEEDNUM       = 0x6fffffff,  ///< Number of needed versions
 		DT_LOPROC           = 0x70000000,  ///< Start of processor-specific
-		DT_AUXILIARY        = 0x7ffffffd,  ///< Shared object to load before self 
+		DT_AUXILIARY        = 0x7ffffffd,  ///< Shared object to load before self
 		DT_HIPROC           = 0x7fffffff,  ///< End of processor-specific
 	};
 
@@ -528,32 +543,32 @@ struct Constants {
 
 	/*! \brief Flag bits for DT_FLAGS_1 */
 	enum dyn_val_flags_1 {
-		DF_1_NOW        = 0x00000001,  ///< Set RTLD_NOW for this object. 
-		DF_1_GLOBAL     = 0x00000002,  ///< Set RTLD_GLOBAL for this object. 
-		DF_1_GROUP      = 0x00000004,  ///< Set RTLD_GROUP for this object. 
+		DF_1_NOW        = 0x00000001,  ///< Set RTLD_NOW for this object.
+		DF_1_GLOBAL     = 0x00000002,  ///< Set RTLD_GLOBAL for this object.
+		DF_1_GROUP      = 0x00000004,  ///< Set RTLD_GROUP for this object.
 		DF_1_NODELETE   = 0x00000008,  ///< Set RTLD_NODELETE for this object.*/
 		DF_1_LOADFLTR   = 0x00000010,  ///< Trigger filtee loading at runtime.*/
 		DF_1_INITFIRST  = 0x00000020,  ///< Set RTLD_INITFIRST for this object*/
-		DF_1_NOOPEN     = 0x00000040,  ///< Set RTLD_NOOPEN for this object. 
-		DF_1_ORIGIN     = 0x00000080,  ///< $ORIGIN must be handled. 
-		DF_1_DIRECT     = 0x00000100,  ///< Direct binding enabled. 
+		DF_1_NOOPEN     = 0x00000040,  ///< Set RTLD_NOOPEN for this object.
+		DF_1_ORIGIN     = 0x00000080,  ///< $ORIGIN must be handled.
+		DF_1_DIRECT     = 0x00000100,  ///< Direct binding enabled.
 		DF_1_TRANS      = 0x00000200,
-		DF_1_INTERPOSE  = 0x00000400,  ///< Object is used to interpose. 
-		DF_1_NODEFLIB   = 0x00000800,  ///< Ignore default lib search path. 
-		DF_1_NODUMP     = 0x00001000,  ///< Object can't be dldump'ed. 
+		DF_1_INTERPOSE  = 0x00000400,  ///< Object is used to interpose.
+		DF_1_NODEFLIB   = 0x00000800,  ///< Ignore default lib search path.
+		DF_1_NODUMP     = 0x00001000,  ///< Object can't be dldump'ed.
 		DF_1_CONFALT    = 0x00002000,  ///< Configuration alternative created.*/
 		DF_1_ENDFILTEE  = 0x00004000,  ///< Filtee terminates filters search.
 		DF_1_DISPRELDNE = 0x00008000,  ///< Disp reloc applied at build time.
-		DF_1_DISPRELPND = 0x00010000,  ///< Disp reloc applied at run-time. 
+		DF_1_DISPRELPND = 0x00010000,  ///< Disp reloc applied at run-time.
 		DF_1_NODIRECT   = 0x00020000,  ///< Object has no-direct binding.
 		DF_1_IGNMULDEF  = 0x00040000,
 		DF_1_NOKSYMS    = 0x00080000,
 		DF_1_NOHDR      = 0x00100000,
-		DF_1_EDITED     = 0x00200000,  ///< Object is modified after built. 
+		DF_1_EDITED     = 0x00200000,  ///< Object is modified after built.
 		DF_1_NORELOC    = 0x00400000,
-		DF_1_SYMINTPOSE = 0x00800000,  ///< Object has individual interposers. 
-		DF_1_GLOBAUDIT  = 0x01000000,  ///< Global auditing required. 
-		DF_1_SINGLETON  = 0x02000000,  ///< Singleton symbols are used. 
+		DF_1_SYMINTPOSE = 0x00800000,  ///< Object has individual interposers.
+		DF_1_GLOBAUDIT  = 0x01000000,  ///< Global auditing required.
+		DF_1_SINGLETON  = 0x02000000,  ///< Singleton symbols are used.
 		DF_1_STUB       = 0x04000000,
 		DF_1_PIE        = 0x08000000,
 	};
@@ -562,6 +577,79 @@ struct Constants {
 	enum dyn_val_feature_1 {
 		DTF_1_PARINIT = 0x00000001,
 		DTF_1_CONFEXP = 0x00000002,
+	};
+
+
+	/*! \brief Notes */
+	enum nhdr_type : uint32_t  {
+		NT_VERSION             = 1,           ///< A version string of some sort.
+		NT_PRSTATUS            = 1,           ///< Contains copy of prstatus struct
+		NT_GNU_ABI_TAG         = 1,           ///< OS ABI Information
+		NT_ARCH                = 2,           ///< A version string of some sort.
+		NT_PRFPREG             = 2,           ///< Contains copy of fpregset struct.
+		NT_FPREGSET            = 2,           ///< Contains copy of fpregset struct
+		NT_GNU_HWCAP           = 2,           ///< Synthetic hwcap information.
+		NT_PRPSINFO            = 3,           ///< Contains copy of prpsinfo struct
+		NT_GNU_BUILD_ID        = 3,           ///< Unique build ID as generated by the GNU ld(1) --build-id option.
+		NT_PRXREG              = 4,           ///< Contains copy of prxregset struct
+		NT_TASKSTRUCT          = 4,           ///< Contains copy of task structure
+		NT_GNU_GOLD_VERSION    = 4,           ///< Contains the GNU Gold linker version
+		NT_PLATFORM            = 5,           ///< String from sysinfo(SI_PLATFORM)
+		NT_GNU_PROPERTY_TYPE_0 = 5,
+		NT_AUXV	               = 6,           ///< Contains copy of auxv array
+		NT_GWINDOWS            = 7,           ///< Contains copy of gwindows struct
+		NT_ASRS	               = 8,           ///< Contains copy of asrset struct
+		NT_PSTATUS             = 10,          ///< Contains copy of pstatus struct
+		NT_PSINFO              = 13,          ///< Contains copy of psinfo struct
+		NT_PRCRED              = 14,          ///< Contains copy of prcred struct
+		NT_UTSNAME             = 15,          ///< Contains copy of utsname struct
+		NT_LWPSTATUS           = 16,          ///< Contains copy of lwpstatus struct
+		NT_LWPSINFO            = 17,          ///< Contains copy of lwpinfo struct
+		NT_PRFPXREG            = 20,          ///< Contains copy of fprxregset struct
+		NT_SIGINFO             = 0x53494749,  ///< Contains copy of siginfo_t, size might increase
+		NT_FILE                = 0x46494c45,  ///< Contains information about mapped files
+		NT_PRXFPREG            = 0x46e62b7f,  ///< Contains copy of user_fxsr_struct
+		NT_PPC_VMX             = 0x100,       ///< PowerPC Altivec/VMX registers
+		NT_PPC_SPE             = 0x101,       ///< PowerPC SPE/EVR registers
+		NT_PPC_VSX             = 0x102,       ///< PowerPC VSX registers
+		NT_PPC_TAR             = 0x103,       ///< Target Address Register
+		NT_PPC_PPR             = 0x104,       ///< Program Priority Register
+		NT_PPC_DSCR            = 0x105,       ///< Data Stream Control Register
+		NT_PPC_EBB             = 0x106,       ///< Event Based Branch Registers
+		NT_PPC_PMU             = 0x107,       ///< Performance Monitor Registers
+		NT_PPC_TM_CGPR         = 0x108,       ///< TM checkpointed GPR Registers
+		NT_PPC_TM_CFPR         = 0x109,       ///< TM checkpointed FPR Registers
+		NT_PPC_TM_CVMX         = 0x10a,       ///< TM checkpointed VMX Registers
+		NT_PPC_TM_CVSX         = 0x10b,       ///< TM checkpointed VSX Registers
+		NT_PPC_TM_SPR          = 0x10c,       ///< TM Special Purpose Registers
+		NT_PPC_TM_CTAR         = 0x10d,       ///< TM checkpointed Target Address Register
+		NT_PPC_TM_CPPR         = 0x10e,       ///< TM checkpointed Program Priority Register
+		NT_PPC_TM_CDSCR        = 0x10f,       ///< TM checkpointed Data Stream Control Register
+		NT_PPC_PKEY            = 0x110,       ///< Memory Protection Keys registers.
+		NT_386_TLS             = 0x200,       ///< i386 TLS slots (struct user_desc)
+		NT_386_IOPERM          = 0x201,       ///< x86 io permission bitmap (1=deny)
+		NT_X86_XSTATE          = 0x202,       ///< x86 extended state using xsave
+		NT_S390_HIGH_GPRS      = 0x300,       ///< s390 upper register halves
+		NT_S390_TIMER          = 0x301,       ///< s390 timer register
+		NT_S390_TODCMP         = 0x302,       ///< s390 TOD clock comparator register
+		NT_S390_TODPREG        = 0x303,       ///< s390 TOD programmable register
+		NT_S390_CTRS           = 0x304,       ///< s390 control registers
+		NT_S390_PREFIX         = 0x305,       ///< s390 prefix register
+		NT_S390_LAST_BREAK     = 0x306,       ///< s390 breaking event address
+		NT_S390_SYSTEM_CALL    = 0x307,       ///< s390 system call restart data
+		NT_S390_TDB            = 0x308,       ///< s390 transaction diagnostic block
+		NT_S390_VXRS_LOW       = 0x309,       ///< s390 vector registers 0-15 upper half.
+		NT_S390_VXRS_HIGH      = 0x30a,       ///< s390 vector registers 16-31.
+		NT_S390_GS_CB          = 0x30b,       ///< s390 guarded storage registers.
+		NT_S390_GS_BC          = 0x30c,       ///< s390 guarded storage broadcast control block.
+		NT_S390_RI_CB          = 0x30d,       ///< s390 runtime instrumentation.
+		NT_ARM_VFP             = 0x400,       ///< ARM VFP/NEON registers
+		NT_ARM_TLS             = 0x401,       ///< ARM TLS register
+		NT_ARM_HW_BREAK        = 0x402,       ///< ARM hardware breakpoint registers
+		NT_ARM_HW_WATCH        = 0x403,       ///< ARM hardware watchpoint registers
+		NT_ARM_SYSTEM_CALL     = 0x404,       ///< ARM system call number
+		NT_ARM_SVE             = 0x405,       ///< ARM Scalable Vector Extension registers
+		NT_VMCOREDD            = 0x700,       ///< Vmcore Device Dump Note.
 	};
 
 	// version revision
@@ -577,6 +665,7 @@ struct Constants {
 		VER_NDX_GLOBAL    = 1,       ///< Symbol is global
 		VER_NDX_LORESERVE = 0xff00,  ///< Beginning of reserved entries
 		VER_NDX_ELIMINATE = 0xff01,  ///< Symbol is to be eliminated
+		VER_NDX_UNKNOWN   = 0xffff,  ///< No Symbol version (custom)
 	};
 
 	// version revision
@@ -604,13 +693,13 @@ struct Constants {
 		AT_GID               = 13,  ///< Real gid
 		AT_EGID              = 14,  ///< Effective gid
 		AT_CLKTCK            = 17,  ///< Frequency of times()
-		AT_PLATFORM          = 15,  ///< String identifying platform. 
-		AT_HWCAP             = 16,  ///< Machine-dependent hints about processor capabilities. 
-		AT_FPUCW             = 18,  ///< Used FPU control word. 
-		AT_DCACHEBSIZE       = 19,  ///< Data cache block size. 
-		AT_ICACHEBSIZE       = 20,  ///< Instruction cache block size. 
-		AT_UCACHEBSIZE       = 21,  ///< Unified cache block size. 
-		AT_IGNOREPPC         = 22,  ///< Entry should be ignored. 
+		AT_PLATFORM          = 15,  ///< String identifying platform.
+		AT_HWCAP             = 16,  ///< Machine-dependent hints about processor capabilities.
+		AT_FPUCW             = 18,  ///< Used FPU control word.
+		AT_DCACHEBSIZE       = 19,  ///< Data cache block size.
+		AT_ICACHEBSIZE       = 20,  ///< Instruction cache block size.
+		AT_UCACHEBSIZE       = 21,  ///< Unified cache block size.
+		AT_IGNOREPPC         = 22,  ///< Entry should be ignored.
 		AT_SECURE            = 23,   ///< Boolean, was exec setuid-like?
 		AT_BASE_PLATFORM     = 24,  ///< String identifying real platforms
 		AT_RANDOM            = 25,  ///< Address of 16 random bytes
