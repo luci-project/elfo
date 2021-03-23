@@ -15,6 +15,7 @@ class ELF : public ELF_Def::Structures<C> {
 	using Def = typename ELF_Def::Structures<C>;
 	using elfptr_t = typename Def::Elf_Addr;
 
+ protected:
 	// Accessor to wrap elements
 	template <typename D>
 	class Accessor {
@@ -353,38 +354,35 @@ class ELF : public ELF_Def::Structures<C> {
 
 	struct SymbolTable : public Array<Symbol> {
 		const ELF<C> & elf;
-		const enum {
-			NONE,
-			HASH,
-			GNUHASH
-		} lookup_method;
+		const typename Def::shdr_type section_type;
 		const void * header;
-		const Section & symbol_section;
 		const uint16_t * const versions;
 
 		/*! \brief Symbol table
 		 * similar to symbols array, but offering a symbol lookup
 		 * (which can be quite fast when using hash)
 		 */
-		SymbolTable(const ELF<C> & elf, const Section & section, const Section * version_section = nullptr) : elf(elf),
-		    lookup_method(section.type() == Def::SHT_GNUHASH ? GNUHASH : (section.type() == Def::SHT_HASH ? HASH : NONE)),
-		    header(lookup_method == NONE ? nullptr : section.data()),
-		    symbol_section(lookup_method == NONE ? section.get_symbols() : elf.sections[section.link()].get_symbols()),
-		    versions(version == nullptr ? nullptr : version_section->get_versions()),
-		    Array<Symbol>(Symbol(elf, symbol_section.link()), elf.start + symbol_section.offset(), symbol_section.size() / symbol_section.entry_size()) {
-				assert(version == nullptr || version->type() == Def::SHT_GNU_VERSYM);
-			}
+		SymbolTable(const ELF<C> & elf, const Section & section) : SymbolTable(elf, section, elf.sections[0]) {}
+
+		/*! \brief Symbol table with version information
+		 */
+		SymbolTable(const ELF<C> & elf, const Section & section, const Section & version_section) :
+		    SymbolTable(elf, (section.type() == Def::SHT_GNU_HASH) || (section.type() == Def::SHT_HASH), section, version_section) {}
+
+		/*! \brief Empty (non-existing) symbol table
+		 */
+		SymbolTable(const ELF<C> & elf) : elf(elf), section_type(Def::SHT_NULL), header(nullptr), versions(nullptr), Array<Symbol>(Symbol(elf, 0), 0, 0) {}
 
 		/*! \brief Get symbol name by index */
-		inline const char * name(uint32_t idx) {
-			return idx == Def::STN_UNDEF ? nullptr : elf.string(symbol_section.strtab, this->values[idx].st_name);
+		inline const char * name(uint32_t idx) const {
+			return idx == Def::STN_UNDEF ? nullptr : elf.string(this->accessor.strtab, this->values[idx].st_name);
 		}
 
 		/*! \brief Get symbol version index by symbol index
 		 * \param idx symbol index
 		 * \return Symbol version or VER_NDX_UNKNOWN if none
 		 */
-		inline const uint16_t version(uint32_t idx) {
+		inline const uint16_t version(uint32_t idx) const{
 			return versions == nullptr ? Def::VER_NDX_UNKNOWN : versions[idx];
 		}
 
@@ -398,14 +396,15 @@ class ELF : public ELF_Def::Structures<C> {
 		uint32_t index(const char * search_name, uint32_t required_version = Def::VER_NDX_UNKNOWN) const {
 			if (required_version != Def::VER_NDX_UNKNOWN && versions == nullptr)
 				required_version = Def::VER_NDX_UNKNOWN;
-			switch (lookup_method) {
-				case HASH:
-					return index_by_hash(search_name, version);
-				case GNUHASH:
-					return index_by_gnuhash(search_name, version);
-				default:
+			switch (section_type) {
+				case Def::SHT_HASH:
+					return index_by_hash(search_name, required_version);
+				case Def::SHT_GNU_HASH:
+					return index_by_gnuhash(search_name, required_version);
+				case Def::SHT_DYNSYM:
+				case Def::SHT_SYMTAB:
 					for (size_t i = 1; i < this->entries; i++)
-						if (strcmp(search_name, name(i)) == 0 && (required_version == Def::VER_NDX_UNKNOWN || required_version == version(i)))
+						if (this->strcmp(search_name, name(i)) == 0 && (required_version == Def::VER_NDX_UNKNOWN || required_version == version(i)))
 							return i;
 			}
 			return Def::STN_UNDEF;
@@ -422,17 +421,28 @@ class ELF : public ELF_Def::Structures<C> {
 		}
 
 	 private:
+		SymbolTable(const ELF<C> & elf, bool use_hash, const Section & section, const Section & version_section) :
+		    SymbolTable(elf, section.type(), use_hash ? section.data() : nullptr, use_hash ? elf.sections[section.link()] : section, version_section) {}
+
+		SymbolTable(const ELF<C> & elf, const typename Def::shdr_type section_type, void * header, const Section & symbol_section, const Section & version_section) :
+		    elf(elf), section_type(section_type), header(header), versions(version_section.type() == Def::SHT_GNU_VERSYM ? version_section.get_versions() : nullptr),
+		    Array<Symbol>(Symbol(elf, symbol_section.link()), elf.start + symbol_section.offset(), symbol_section.size() / symbol_section.entry_size())
+			{
+			assert(section_type == Def::SHT_GNU_HASH || section_type == Def::SHT_HASH || section_type == Def::SHT_DYNSYM || section_type == Def::SHT_SYMTAB);
+			assert(section_type == Def::SHT_DYNSYM || section_type == Def::SHT_SYMTAB || header != nullptr);
+		}
+
 		/*! \brief Find symbol index using ELF Hash
 		 * \see https://flapenguin.me/elf-dt-hash
 		 * \param search_name symbol name to search
 		 * \return index of object or STN_UNDEF
 		 */
 		uint32_t index_by_hash(const char *search_name, uint32_t required_version) const {
-			const ELF_Def::Hash_header * header = reinterpret_cast<ELF_Def::Hash_header*>(this->header);
+			const ELF_Def::Hash_header * header = reinterpret_cast<const ELF_Def::Hash_header*>(this->header);
 			const uint32_t * bucket = reinterpret_cast<const uint32_t *>(header + 1);
 			const uint32_t * chain = bucket + header->nbucket;
 
-			const uint32_t h = Def::hash(search_name);
+			const uint32_t h = ELF_Def::hash(search_name);
 
 			for (uint32_t i = bucket[h % (header->nbucket)]; i; i = chain[i])
 				if (!SymbolTable::strcmp(search_name, SymbolTable::name(i)) && (required_version == Def::VER_NDX_UNKNOWN || required_version == version(i)))
@@ -448,12 +458,12 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \return index of object or STN_UNDEF
 		 */
 		uint32_t index_by_gnuhash(const char *search_name, uint32_t required_version) const {
-			const ELF_Def::GnuHash_header * header = reinterpret_cast<ELF_Def::GnuHash_header*>(this->header);
+			const ELF_Def::GnuHash_header * header = reinterpret_cast<const ELF_Def::GnuHash_header*>(this->header);
 			const elfptr_t * bloom = reinterpret_cast<const elfptr_t *>(header + 1);
 			const uint32_t * buckets = reinterpret_cast<const uint32_t *>(bloom + header->bloom_size);
 			const uint32_t * chain = buckets + header->nbuckets;
 
-			uint32_t h1 = Def::gnuhash(search_name);
+			uint32_t h1 = ELF_Def::gnuhash(search_name);
 			const uint32_t c = sizeof(elfptr_t) * 8;
 			const elfptr_t one = 1;
 			const elfptr_t mask = (one << (h1 % c))
@@ -1011,7 +1021,7 @@ class ELF : public ELF_Def::Structures<C> {
 	bool valid() {
 		if (length < sizeof(Header)
 		 || !header.valid()
-		 || length < header.size()
+		 || length < header.e_ehsize
 		 || length < header.e_phoff + header.e_phentsize * header.e_phnum
 		 || length < header.e_shoff + header.e_shentsize * header.e_shnum)
 			return false;
@@ -1027,6 +1037,7 @@ class ELF : public ELF_Def::Structures<C> {
 		return true;
 	}
 
+ protected:
 	template<typename ACCESSOR>
 	Array<ACCESSOR> get(const ACCESSOR & t, uintptr_t offset, size_t size) const {
 		return Array<ACCESSOR>(t, offset, size);
@@ -1037,10 +1048,12 @@ class ELF : public ELF_Def::Structures<C> {
 		return Array<ACCESSOR>(ACCESSOR(*this), 0, 0);
 	}
 
-	Section section_by_offset(uintptr_t offset) const {
+	const Section section_by_offset(uintptr_t offset) const {
 		for (auto &s : sections)
 			if (s.offset() == offset)
 				return s;
+			else if (s.offset() > offset)
+				break;
 		return sections[0];
 	}
 
@@ -1060,45 +1073,22 @@ class ELF : public ELF_Def::Structures<C> {
 	const char * string(uint16_t section_index, uint32_t offset) const {
 		return string(sections[section_index], offset);
 	}
-
-	/*! \brief Find dynamic */
-	Array<Dynamic> dynamic() const {
-		for (auto & section : sections)
-			if (section.type() == Def::SHT_DYNAMIC)
-				return section.get_dynamic();
-		return get<Dynamic>();
-	}
-
-	/*! \brief Find dyanmic symbol table
-	 * Use hash if possible
-	 * \return Symbol Table
-	 */
-	SymbolTable dynamic_symbol_table() const {
-		uintptr_t offsets[3] = { 0 };
-
-		for (auto &dyn: dynamic()) {
-			switch(dyn.tag()) {
-				case Def::DT_GNU_HASH:
-					offsets[0] = dyn.value();
-					break;
-
-				case Def::DT_HASH:
-					offsets[1] = dyn.value();
-					break;
-
-				case Def::DT_SYMTAB:
-					offsets[2] = dyn.value();
-					break;
-			}
-		}
-
-		for (auto & offset : offsets)
-			if (offset != 0)
-				return SymbolTable(*this, section_by_offset(offset));
-
-		return nullptr;
-	}
 };
 
-using ELF32 = ELF<ELFCLASS::ELFCLASS32>;
-using ELF64 = ELF<ELFCLASS::ELFCLASS64>;
+// Declare types for fast access
+namespace ELF_Def {
+
+template<size_t B>
+struct AddressWidth { typedef ELF<ELFCLASS::ELFCLASSNONE> type; };
+
+template<>
+struct AddressWidth<4> { typedef ELF<ELFCLASS::ELFCLASS32> type; };
+
+template<>
+struct AddressWidth<8> { typedef ELF<ELFCLASS::ELFCLASS64> type; };
+
+} // ELF_Def
+
+using Elf = typename ELF_Def::AddressWidth<sizeof(void*)>::type;
+using Elf32 = ELF<ELFCLASS::ELFCLASS32>;
+using Elf64 = ELF<ELFCLASS::ELFCLASS64>;

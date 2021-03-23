@@ -476,52 +476,52 @@ int main(int argc, char * argv[]) {
 	if (argc != 2) {
 		cerr << "Usage: " << argv[0] << " ELF-FILE" << endl;
 		return 1;
-	} else {
-		// Open File
-		ifstream ifs(argv[1], ios::binary | ios::ate);
-		if (!ifs.is_open()) {
-			cerr << "Opening " << argv[1] << " failed!" << endl;
+	}
+
+	// Open File
+	ifstream ifs(argv[1], ios::binary | ios::ate);
+	if (!ifs.is_open()) {
+		cerr << "Opening " << argv[1] << " failed!" << endl;
+		return 1;
+	}
+
+	// Get length of file
+	ifstream::pos_type pos = ifs.tellg();
+	size_t length = pos;
+	cout << "File " << argv[1] << " (" << length << " Bytes)" << endl
+	     << endl;
+
+	// Read file into buffer
+	char *buf = new char[length];
+	ifs.seekg(0, ios::beg);
+	ifs.read(buf, length);
+	if (ifs.fail()) {
+		cerr << "Reading " << argv[1] << " failed!" << endl;
+		return 1;
+	}
+
+	// Read ELF Identification
+	ELF_Ident * ident = reinterpret_cast<ELF_Ident *>(buf);
+	if (length < sizeof(ELF_Ident) || !ident->valid()) {
+		cerr << "No valid ELF identification header in " << argv[1] << "!" << endl;
+		return 1;
+	} else if (!ident->data_supported()) {
+		cerr << "Unsupported encoding (" << ident->data() << " instead of " << ident->host_data() << ")!" << endl;
+		return 1;
+	}
+
+	// Dump correct class
+	switch (ident->elfclass()) {
+		case ELFCLASS::ELFCLASS32:
+			Dump<ELFCLASS::ELFCLASS32>(buf, length).all();
+			return 0;
+
+		case ELFCLASS::ELFCLASS64:
+			Dump<ELFCLASS::ELFCLASS64>(buf, length).all();
+			return 0;
+
+		default:
+			cerr << "Unsupported class " << ident->elfclass() << "!" << endl;
 			return 1;
-		}
-
-		// Get length of file
-		ifstream::pos_type pos = ifs.tellg();
-		size_t length = pos;
-		cout << "File " << argv[1] << " (" << length << " Bytes)" << endl
-		     << endl;
-
-		// Read file into buffer
-		char *buf = new char[length];
-		ifs.seekg(0, ios::beg);
-		ifs.read(buf, length);
-		if (ifs.fail()) {
-			cerr << "Reading " << argv[1] << " failed!" << endl;
-			return 1;
-		}
-
-		// Read ELF Identification
-		ELF_Ident * ident = reinterpret_cast<ELF_Ident *>(buf);
-		if (length < sizeof(ELF_Ident) || !ident->valid()) {
-			cerr << "No valid ELF identification header in " << argv[1] << "!" << endl;
-			return 1;
-		} else if (!ident->data_supported()) {
-			cerr << "Unsupported encoding (" << ident->data() << " instead of " << ident->host_data() << ")!" << endl;
-			return 1;
-		}
-
-		// Dump correct class
-		switch (ident->elfclass()) {
-			case ELFCLASS::ELFCLASS32:
-				Dump<ELFCLASS::ELFCLASS32>(buf, length).all();
-				return 0;
-
-			case ELFCLASS::ELFCLASS64:
-				Dump<ELFCLASS::ELFCLASS64>(buf, length).all();
-				return 0;
-
-			default:
-				cerr << "Unsupported class " << ident->elfclass() << "!" << endl;
-				return 1;
-		}
 	}
 }
