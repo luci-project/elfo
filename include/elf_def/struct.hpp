@@ -3,31 +3,22 @@
 #include <stdint.h>
 
 #include "const.hpp"
+#include "ident.hpp"
 #include "types.hpp"
 
 namespace ELF_Def {
 
 template<ELFCLASS C>
-struct Structures : public Constants, public Types<C> {
+struct Structures : public Identification, public Constants, public Types<C> {
 	using elfptr_t = typename Structures::Elf_Addr;
 	using elfoff_t = typename Structures::Elf_Off;
 
 	/*! \brief ELF file header */
-	union Ehdr_ident {
-		uint8_t values[16];
-		struct {
-			char ei_magic[4];
-			ehdr_ident_class ei_class;
-			ehdr_ident_data ei_data;
-			ehdr_ident_version ei_version;
-			ehdr_ident_abi ei_abi;
-			uint8_t ei_abiversion;
-			char padding[7];
-		} __attribute__((packed));
-	};
-
 	struct Ehdr {
-		Ehdr_ident e_ident;
+		union {
+			unsigned char e_ident[16];
+			Identification identification;
+		};
 		ehdr_type e_type;
 		ehdr_machine e_machine;
 		ehdr_version e_version;

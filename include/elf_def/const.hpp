@@ -5,44 +5,6 @@
 namespace ELF_Def {
 
 struct Constants {
-	enum ehdr_ident_class : uint8_t {
-		ELFCLASSNONE = 0,
-		ELFCLASS32   = 1,
-		ELFCLASS64   = 2,
-	};
-
-	enum ehdr_ident_data : uint8_t {
-		ELFDATANONE = 0,
-		ELFDATA2LSB = 1,
-		ELFDATA2MSB = 2,
-	};
-
-	enum ehdr_ident_version : uint8_t {
-		ELFVERSION_NONE    = 0,
-		ELFVERSION_CURRENT = 1,
-	};
-
-	enum ehdr_ident_abi: uint8_t {
-		ELFOSABI_NONE       = 0,
-		ELFOSABI_SYSV       = 0,
-		ELFOSABI_HPUX       = 1,
-		ELFOSABI_NETBSD     = 2,
-		ELFOSABI_LINUX      = 3,
-		ELFOSABI_SOLARIS    = 6,
-		ELFOSABI_AIX        = 7,
-		ELFOSABI_IRIX       = 8,
-		ELFOSABI_FREEBSD    = 9,
-		ELFOSABI_TRU64      = 10,
-		ELFOSABI_MODESTO    = 11,
-		ELFOSABI_OPENBSD    = 12,
-		ELFOSABI_OPENVMS    = 13,
-		ELFOSABI_NSK        = 14,
-		ELFOSABI_AROS       = 15,
-		ELFOSABI_FENIXOS    = 16,
-		ELFOSABI_ARM        = 97,
-		ELFOSABI_STANDALONE = 255
-	};
-
 	enum ehdr_type : uint16_t {
 		ET_NONE   = 0,
 		ET_REL    = 1,
@@ -700,7 +662,7 @@ struct Constants {
 		AT_ICACHEBSIZE       = 20,  ///< Instruction cache block size.
 		AT_UCACHEBSIZE       = 21,  ///< Unified cache block size.
 		AT_IGNOREPPC         = 22,  ///< Entry should be ignored.
-		AT_SECURE            = 23,   ///< Boolean, was exec setuid-like?
+		AT_SECURE            = 23,  ///< Boolean, was exec setuid-like?
 		AT_BASE_PLATFORM     = 24,  ///< String identifying real platforms
 		AT_RANDOM            = 25,  ///< Address of 16 random bytes
 		AT_HWCAP2            = 26,  ///< More machine-dependent hints about processor capabilities

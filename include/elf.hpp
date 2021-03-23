@@ -4,8 +4,9 @@
 #include <string>
 #include <utility>
 
-#include "elf_def/const.hpp"
+#include "elf_def/ident.hpp"
 #include "elf_def/types.hpp"
+#include "elf_def/const.hpp"
 #include "elf_def/struct.hpp"
 #include "elf_def/hash.hpp"
 
@@ -174,41 +175,34 @@ class ELF : public ELF_Def::Structures<C> {
 	struct Header : Def::Ehdr {
 		/*! \brief Check if this elf identification header is valid for ELFO */
 		bool valid() const {
-			static const char ehdr_ident_magic[4] = { 0x7f, 'E', 'L', 'F' };
-
-			auto & ident = this->e_ident;
-			for (int i = 0; i < 4; i++)
-				if (ident.ei_magic[i] != ehdr_ident_magic[i])
-					return false;
-
-			return ident.ei_class == C
-			    && ident.ei_data == host_data()
-			    && ident.ei_version == Def::ELFVERSION_CURRENT;
+			return this->identification.valid()
+			    && this->identification.elfclass() == C
+			    && this->identification.data_supported();
 		}
 
 		/*! \brief File class */
-		typename Def::ehdr_ident_class ident_class() const {
-			return this->e_ident.ei_class;
+		typename Def::ident_class ident_class() const {
+			return this->identification.elfclass();
 		}
 
 		/*! \brief Data encoding */
-		typename Def::ehdr_ident_data ident_data() const {
-			return this->e_ident.ei_data;
+		typename Def::ident_data ident_data() const {
+			return this->identification.data();
 		}
 
 		/*! \brief File version */
-		typename Def::ehdr_ident_version ident_version() const {
-			return this->e_ident.ei_version;
+		typename Def::ident_version ident_version() const {
+			return this->identification.version();
 		}
 
 		/*! \brief OS ABI identification */
-		typename Def::ehdr_ident_abi ident_abi() const {
-			return this->e_ident.ei_abi;
+		typename Def::ident_abi ident_abi() const {
+			return this->identification.abi();
 		}
 
 		/*! \brief ABI Version */
-		uint8_t ident_abiversion() const {
-			return this->e_ident.ei_abiversion;
+		unsigned ident_abiversion() const {
+			return this->identification.abiversion();
 		}
 
 		/*! \brief Object file type */
@@ -234,13 +228,6 @@ class ELF : public ELF_Def::Structures<C> {
 		/*! \brief Object file version */
 		uint32_t flags() const {
 			return this->e_flags;
-		}
-
-	 private:
-		/*! \brief Get host data encoding */
-		static ELF_Def::Constants::ehdr_ident_data host_data() {
-			static const int tmp = 1;
-			return (1 == *(const char*)&tmp) ? ELF_Def::Constants::ELFDATA2LSB : ELF_Def::Constants::ELFDATA2MSB;
 		}
 	};
 
@@ -379,11 +366,11 @@ class ELF : public ELF_Def::Structures<C> {
 		 * similar to symbols array, but offering a symbol lookup
 		 * (which can be quite fast when using hash)
 		 */
-		SymbolTable(const ELF<C> & elf, const Section & section, const Section * version = nullptr) : elf(elf),
+		SymbolTable(const ELF<C> & elf, const Section & section, const Section * version_section = nullptr) : elf(elf),
 		    lookup_method(section.type() == Def::SHT_GNUHASH ? GNUHASH : (section.type() == Def::SHT_HASH ? HASH : NONE)),
 		    header(lookup_method == NONE ? nullptr : section.data()),
 		    symbol_section(lookup_method == NONE ? section.get_symbols() : elf.sections[section.link()].get_symbols()),
-		    versions(version == nullptr ? nullptr : reinterpret_cast<const uint16_t *>(version->data())),
+		    versions(version == nullptr ? nullptr : version_section->get_versions()),
 		    Array<Symbol>(Symbol(elf, symbol_section.link()), elf.start + symbol_section.offset(), symbol_section.size() / symbol_section.entry_size()) {
 				assert(version == nullptr || version->type() == Def::SHT_GNU_VERSYM);
 			}
@@ -911,6 +898,10 @@ class ELF : public ELF_Def::Structures<C> {
 			return this->_data->sh_entsize;
 		}
 
+		size_t entries() const {
+			return entry_size() == 0 ? 0 : (size() / entry_size());
+		}
+
 		/*! \brief Section alignment */
 		size_t alignment() const {
 			return this->_data->sh_addralign;
@@ -934,6 +925,12 @@ class ELF : public ELF_Def::Structures<C> {
 		List<Note> get_notes() const {
 			assert(type() == Def::SHT_NOTE);
 			return get_list<Note>();
+		}
+
+		const uint16_t * get_versions() const {
+			assert(type() == Def::SHT_GNU_VERSYM);
+			assert(entry_size() == sizeof(uint16_t));
+			return static_cast<uint16_t *>(data());
 		}
 
 		List<VersionDefinition> get_version_definition() const {
@@ -962,8 +959,9 @@ class ELF : public ELF_Def::Structures<C> {
 			uintptr_t ptr = elf.start + offset();
 			typename Def::Dyn * dyn = reinterpret_cast<typename Def::Dyn *>(ptr);
 			assert(entry_size() == sizeof(*dyn));
+			size_t limit = this->entries() - 1;
 			size_t entries = 0;
-			for (; entries < (size() / entry_size()) - 1 && dyn[entries].d_tag != Def::DT_NULL; entries++) {}
+			for (; entries < limit && dyn[entries].d_tag != Def::DT_NULL; entries++) {}
 			return Array<Dynamic>(Dynamic(elf, link()), ptr, entries + 1);
 		}
 
@@ -974,7 +972,7 @@ class ELF : public ELF_Def::Structures<C> {
 		template<typename ACCESSOR>
 		Array<ACCESSOR> get_array() const {
 			assert(entry_size() == sizeof(*ACCESSOR::_data));
-			return Array<ACCESSOR>(ACCESSOR(elf, link()), elf.start + offset(), size() / entry_size());
+			return Array<ACCESSOR>(ACCESSOR(elf, link()), elf.start + offset(), entries());
 		}
 
 		/*! \brief Sequential list with elements
