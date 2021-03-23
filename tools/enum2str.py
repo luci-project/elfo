@@ -9,27 +9,40 @@ enumValue = Group(identifier('name') + Optional(EQ + Word(nums+'abcdefABCDEFx')(
 enumList = Group(enumValue + ZeroOrMore(COMMA + enumValue))
 enum = Suppress('enum') + Suppress(ZeroOrMore('class')) + identifier('enum') + Suppress(ZeroOrMore(COLON + identifier)) + LBRACE + enumList('names') + ZeroOrMore(COMMA) + RBRACE
 
+header = """
+#pragma once
 
-print('#pragma once')
-print()
-print('#include <cstdint>')
-print('#include <ostream>')
-print('#include <vector>')
-print()
-print('#include "{}"'.format(sys.argv[1]))
-print()
-print('#ifndef _ENUM_VALUE');
-print('#define _ENUM_VALUE 1');
-print('static bool _enum_value = false;');
-print('inline std::ostream& enum_value_show(std::ostream& os) { _enum_value = true; return os; }')
-print('inline std::ostream& enum_value_hide(std::ostream& os) { _enum_value = false; return os; }')
-print('#endif');
+#include <cstdint>
+#include <ostream>
+#include <vector>
 
+#include "{include}"
+
+#ifndef _ENUM_VALUE
+#define _ENUM_VALUE 1
+static bool _enum_value = false;
+inline std::ostream& enum_value_show(std::ostream& os) {{ _enum_value = true; return os; }}
+inline std::ostream& enum_value_hide(std::ostream& os) {{ _enum_value = false; return os; }}
+#endif
+"""
+
+fstart = """
+std::ostream& operator<<(std::ostream& os, {ident} val) {{
+	switch(val) {{
+"""
+fcase = '		case {ident}::{name}: return os << (_enum_value ? "{name} ({value})" : "{name}");'
+fend = """	}};
+	if (_enum_value) os << "({ident})";
+	return os << static_cast<std::uintptr_t>(val);
+}}
+
+static std::initializer_list<{ident}> _enum_values_{enum} = {{{list}}};
+"""
+
+print(header.format(include = sys.argv[1]))
 for item, _, _ in enum.scanString(sys.stdin.read()):
     ident = '::'.join(sys.argv[2:] + [item.enum])
-    print()
-    print(f'std::ostream& operator<<(std::ostream& os, {ident} val) {{')
-    print('	switch(val) {')
+    print(fstart.format(ident = ident))
     values = set()
     enums = set()
     val = 0
@@ -38,16 +51,8 @@ for item, _, _ in enum.scanString(sys.stdin.read()):
             val = int(entry.value, 0)
         if not val in values:
             name = entry.name
-            value = val if val < 256 else hex(val)
-            print(f'		case {ident}::{name}: return os << (_enum_value ? "{name} ({value})" : "{name}");')
+            print(fcase.format(ident = ident, name = entry.name, value = val if val < 256 else hex(val)))
             values.add(val)
-            enums.add(f'{ident}::{name}')
+            enums.add(f'{ident}::{entry.name}')
         val += 1
-    print('	};')
-    print(f'	if (_enum_value) os << "({ident})";')
-    print(f'	return os << static_cast<std::uintptr_t>(val);')
-    print('};')
-    print()
-    enumsList = ', '.join(enums)
-    print(f'static std::initializer_list<{ident}> _enum_values_{item.enum} = {{{enumsList}}};')
-    print()
+    print(fend.format(ident = ident, enum = item.enum, list = ', '.join(enums)))
