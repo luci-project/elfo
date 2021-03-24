@@ -68,13 +68,13 @@ namespace ELF_Def {
 		}
 
 		/*! \brief Get host data encoding */
-		static ident_data host_data() {
+		static ident_data data_host() {
 			static const int tmp = 1;
 			return (1 == *(const char*)&tmp) ? ELFDATA2LSB : ELFDATA2MSB;
 		}
 
 		bool data_supported() const {
-			return data() == host_data();
+			return data() == data_host();
 		}
 
 		/*! \brief File version */

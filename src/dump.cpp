@@ -506,7 +506,7 @@ int main(int argc, char * argv[]) {
 		cerr << "No valid ELF identification header in " << argv[1] << "!" << endl;
 		return 1;
 	} else if (!ident->data_supported()) {
-		cerr << "Unsupported encoding (" << ident->data() << " instead of " << ident->host_data() << ")!" << endl;
+		cerr << "Unsupported encoding (" << ident->data() << " instead of " << ident->data_host() << ")!" << endl;
 		return 1;
 	}
 

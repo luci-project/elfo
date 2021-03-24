@@ -30,6 +30,14 @@ class ELF : public ELF_Def::Structures<C> {
 		uintptr_t address() const {
 			return reinterpret_cast<uintptr_t>(_data);
 		}
+
+		bool operator==(const Accessor<D> & o) const {
+			return _data == o._data;
+		}
+
+		bool operator!=(const Accessor<D> & o) const {
+			return _data != o._data;
+		}
 	};
 
 	// Array (with random access) using accessor
@@ -357,6 +365,8 @@ class ELF : public ELF_Def::Structures<C> {
 		const typename Def::shdr_type section_type;
 		const void * header;
 		const uint16_t * const versions;
+		using Array<Symbol>::operator[];
+		using Array<Symbol>::index;
 
 		/*! \brief Symbol table
 		 * similar to symbols array, but offering a symbol lookup
@@ -393,7 +403,7 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \param required_version required version or VER_NDX_UNKNOWN if none
 		 * \return index of object or STN_UNDEF
 		 */
-		uint32_t index(const char * search_name, uint32_t required_version = Def::VER_NDX_UNKNOWN) const {
+		size_t index(const char * search_name, uint32_t required_version = Def::VER_NDX_UNKNOWN) const {
 			if (required_version != Def::VER_NDX_UNKNOWN && versions == nullptr)
 				required_version = Def::VER_NDX_UNKNOWN;
 			switch (section_type) {
@@ -410,14 +420,25 @@ class ELF : public ELF_Def::Structures<C> {
 			return Def::STN_UNDEF;
 		}
 
+		/*! \brief Find symbol
+		 * use hash if available
+		 * \note Undefined symbols are usually excluded from hash hence they might not be found using this method!
+		 * \param search_name symbol name to search
+		 * \param required_version required version or VER_NDX_UNKNOWN if none
+		 * \return index of object or STN_UNDEF
+		 */
+		size_t index(const std::string & search_name, uint32_t required_version = Def::VER_NDX_UNKNOWN) const {
+			return index(search_name.c_str(), required_version);
+		}
+
 		/*! \brief Access symbol by char* index */
 		inline Symbol operator[](const char * search_name) const {
-			return this->operator[](index(search_name));  // 0 == UNDEF
+			return operator[](index(search_name));  // 0 == UNDEF
 		}
 
 		/*! \brief Access symbol by string index */
-		inline Symbol operator[](std::string search_name) const {
-			return this->operator[](search_name.c_str());
+		inline Symbol operator[](const std::string & search_name) const {
+			return operator[](search_name.c_str());
 		}
 
 	 private:
@@ -981,8 +1002,12 @@ class ELF : public ELF_Def::Structures<C> {
 		 */
 		template<typename ACCESSOR>
 		Array<ACCESSOR> get_array() const {
-			assert(entry_size() == sizeof(*ACCESSOR::_data));
-			return Array<ACCESSOR>(ACCESSOR(elf, link()), elf.start + offset(), entries());
+			if (type() == Def::SHT_NULL) {
+				return Array<ACCESSOR>(ACCESSOR(elf, link()), 0, 0);
+			} else {
+				assert(entry_size() == sizeof(*ACCESSOR::_data));
+				return Array<ACCESSOR>(ACCESSOR(elf, link()), elf.start + offset(), entries());
+			}
 		}
 
 		/*! \brief Sequential list with elements
@@ -993,10 +1018,14 @@ class ELF : public ELF_Def::Structures<C> {
 		 */
 		template<typename ACCESSOR>
 		List<ACCESSOR> get_list(bool last_is_nullptr = false) const {
-			using V = decltype(ACCESSOR::_data);
-			assert(entry_size() == 0);
-			uintptr_t begin_adr = elf.start + offset();
-			return List<ACCESSOR>(ACCESSOR(elf, link()), reinterpret_cast<const V>(begin_adr), last_is_nullptr ? nullptr : reinterpret_cast<const V>(begin_adr + size()));
+			if (type() == Def::SHT_NULL) {
+				return List<ACCESSOR>(ACCESSOR(elf, 0), nullptr, nullptr);
+			} else {
+				using V = decltype(ACCESSOR::_data);
+				assert(entry_size() == 0);
+				uintptr_t begin_adr = elf.start + offset();
+				return List<ACCESSOR>(ACCESSOR(elf, link()), reinterpret_cast<const V>(begin_adr), last_is_nullptr ? nullptr : reinterpret_cast<const V>(begin_adr + size()));
+			}
 		}
 	};
 
@@ -1018,7 +1047,7 @@ class ELF : public ELF_Def::Structures<C> {
 	}
 
 	/*! \brief Check if this file seems to be valid (using file size and offsets) */
-	bool valid() {
+	bool valid() const {
 		if (length < sizeof(Header)
 		 || !header.valid()
 		 || length < header.e_ehsize
@@ -1027,7 +1056,7 @@ class ELF : public ELF_Def::Structures<C> {
 			return false;
 
 		for (auto & section : sections)
-			if (length < section.offset() + section.size())
+			if (section.type() != Def::SHT_NOBITS && length < section.offset() + section.size())
 				return false;
 
 		for (auto & segment : segments)

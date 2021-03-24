@@ -13,5 +13,5 @@ src/_str_ident.hpp: include/elf_def/ident.hpp tools/enum2str.py Makefile
 dump: src/dump.cpp src/_str_const.hpp src/_str_ident.hpp Makefile
 	$(CXX) $(CXXFLAGS) -o $@ $<
 
-lookup: src/lookup.cpp Makefile
+lookup: src/lookup.cpp src/_str_const.hpp src/_str_ident.hpp Makefile
 	$(CXX) $(CXXFLAGS) -o $@ $<
