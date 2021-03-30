@@ -1,4 +1,4 @@
-#pragma once
+		#pragma once
 
 #include <cassert>
 #include <string>
@@ -10,19 +10,37 @@
 #include "elf_def/struct.hpp"
 #include "elf_def/hash.hpp"
 
+
+/*! \brief Parser for data in the Executable and Linking Format
+ * \tparam C 32- or 64-bit elf class
+ */
 template<ELFCLASS C>
 class ELF : public ELF_Def::Structures<C> {
 	using Def = typename ELF_Def::Structures<C>;
 	using elfptr_t = typename Def::Elf_Addr;
 
  protected:
-	// Accessor to wrap elements
-	template <typename D>
-	class Accessor {
-	 public:
-		const D * _data = nullptr;
+	/*! \brief Accessor to wrap elements of a given data type
+	 * \tparam DT data type of element
+	 */
+	template <typename DT>
+	struct Accessor {
+		/*! \brief Parent object */
+		const ELF<C> & _elf;
 
-		const D * ptr() const {
+		/*! \brief Pointer to payload */
+		const DT * _data = nullptr;
+
+		/*! \brief Constructor */
+		Accessor(const ELF<C> & elf) : _elf(elf) {}
+
+		/*! \brief Elf object */
+		const ELF<C> & elf() const {
+			return _elf;
+		}
+
+		/*! \brief Retrieve payload */
+		const DT * ptr() const {
 			return _data;
 		}
 
@@ -31,67 +49,110 @@ class ELF : public ELF_Def::Structures<C> {
 			return reinterpret_cast<uintptr_t>(_data);
 		}
 
-		bool operator==(const Accessor<D> & o) const {
+		/*! \brief Is this the identical payload? */
+		bool operator==(const Accessor<DT> & o) const {
 			return _data == o._data;
 		}
 
-		bool operator!=(const Accessor<D> & o) const {
+		/*! \brief Is this a different payload? */
+		bool operator!=(const Accessor<DT> & o) const {
 			return _data != o._data;
 		}
 	};
 
-	// Array (with random access) using accessor
+	/*! \brief Array-like access to data with fixed element size using accessor
+	 * \tparam A class
+	 */
 	template <typename A>
 	class Array {
+	protected:
+		/*! \brief Data type of element */
 		using V = decltype(A::_data);
 
+		/*! \brief Accessor template for each element */
+		const A _accessor;
+
+		/*! \brief Pointer to first element */
+		V const _values;
+
+		/*! \brief Pointer to first element */
+		const size_t _entries;
+
 	 public:
-		const A accessor;
-		V const values;
-		const size_t entries;
+		/*! \brief Construct new Array access
+		 * \param accessor \ref Accessor template
+		 * \param ptr Pointer to first element
+		 * \param entries number of elements
+		 */
+		Array(const A & accessor, uintptr_t ptr, size_t entries) : _accessor(accessor), _values(reinterpret_cast<V const>(ptr)), _entries(entries) {}
 
-		Array(const A & accessor, uintptr_t ptr, size_t entries) : accessor(accessor), values(reinterpret_cast<V const>(ptr)), entries(entries) {}
-
+		/*! \brief Array-like access
+		 * \param idx index
+		 * \return Accessor for element
+		 */
 		A operator[](size_t idx) const {
-			assert(idx < entries);
-			A ret = accessor;
-			ret._data = values + idx;
+			assert(idx < _entries);
+			A ret = _accessor;
+			ret._data = _values + idx;
 			return ret;
 		}
 
-		/*! \brief Absolute memory address of first element */
+		/*! \brief Get address of first element
+		 * \return Memory address of first element
+		 */
 		uintptr_t address() const {
-			return reinterpret_cast<uintptr_t>(values);
+			return reinterpret_cast<uintptr_t>(_values);
 		}
 
+		/*! \brief Number of elements in array
+		 */
 		size_t count() const {
-			return entries;
+			return _entries;
 		}
 
+		/*! \brief Are there any elements in the array?
+		 * \return `true` if there is at least one element
+		 */
 		bool empty() const {
-			return entries == 0;
+			return _entries == 0;
 		}
 
+		/*! \brief Get index of element
+		 * \param element Element in array to get index of
+		 * \note you have to ensure that this element exists in the array
+		 * \return index
+		 */
 		size_t index(const A & element) const {
-			return (reinterpret_cast<size_t>(element._data) - reinterpret_cast<size_t>(values)) / sizeof(*element._data);
+			return (reinterpret_cast<size_t>(element._data) - reinterpret_cast<size_t>(_values)) / sizeof(*element._data);
 		}
 
-		class iterator {
+		/*! \brief Iterator */
+		class Iterator {
+			/*! \brief Pointer to current element */
 			V p;
+
+			/*! \brief Accessor Template for elements */
 			const A & a;
 
 		 public:
-			iterator(const V & p, const A & a): p(p), a(a){}
+			/*! \brief Iterator constructor
+			 * \param p pointer to current element
+			 * \param a accessor template
+			 */
+			Iterator(const V & p, const A & a): p(p), a(a){}
 
-			iterator operator++() {
+			/*! \brief Next element */
+			Iterator operator++() {
 				++p;
 				return *this;
 			}
 
-			bool operator!=(const iterator & o) const {
+			/*! \brief Compare current iterator element */
+			bool operator!=(const Iterator & o) const {
 				return p != o.p;
 			}
 
+			/*! \brief Get current element */
 			const A operator*() const {
 				A ret = a;
 				ret._data = p;
@@ -99,26 +160,49 @@ class ELF : public ELF_Def::Structures<C> {
 			}
 		};
 
-		iterator begin() const {
-			return iterator(values, accessor);
+		/*! \brief Get Iterator for first element */
+		Iterator begin() const {
+			return Iterator(_values, _accessor);
 		}
 
-		iterator end() const {
-			return iterator(values + entries, accessor);
+		/*! \brief Get Iterator for last element */
+		Iterator end() const {
+			return Iterator(_values + _entries, _accessor);
 		}
 	};
 
-	// Sequential access
+	/*! \brief Sequential access (single linked-list style) to data with variable element size using accessor
+	 * \tparam A class
+	 */
 	template <typename A>
 	class List {
+		/*! \brief Data type of element */
 		using V = decltype(A::_data);
 
-	 public:
+		/*! \brief Accessor template for each element */
 		const A _accessor;
-		const V _begin, _end;
 
+		/*! \brief Pointer to first element of the list*/
+		const V _begin;
+
+		/*! \brief Pointer to the indicator of the end of the list
+		 * \note `nullptr` can be valid
+		 */
+		const V _end;
+
+	 public:
+		/*! \brief Construct new List access
+		 * \param accessor \ref Accessor template
+		 * \param begin Pointer to first element
+		 * \param end Indicator for end of list
+		 */
 		List(const A & accessor, const V begin, const V end) : _accessor(accessor), _begin(begin), _end(end) {}
 
+		/*! \brief Array-like access
+		 * \note O(n) complexity!
+		 * \param idx index
+		 * \return Accessor for element
+		 */
 		A operator[](size_t idx) const {
 			for (auto & entry : *this)
 				if (idx-- == 0)
@@ -126,11 +210,17 @@ class ELF : public ELF_Def::Structures<C> {
 			assert(false);
 			return _accessor;
 		}
-		/*! \brief Absolute memory address of first element */
+
+		/*! \brief Get address of first element
+		 * \return Memory address of first element
+		 */
 		uintptr_t address() const {
 			return reinterpret_cast<uintptr_t>(_begin);
 		}
 
+		/*! \brief Number of elements in array
+		 * \note O(n) complexity!
+		 */
 		size_t count() const {
 			size_t entries = 0;
 			for (auto & entry : *this)
@@ -138,49 +228,68 @@ class ELF : public ELF_Def::Structures<C> {
 			return entries;
 		}
 
+		/*! \brief Are there any elements in the array?
+		 * \return `true` if there is at least one element
+		 */
 		bool empty() const {
 			for (auto & entry : *this)
 				return true;
 			return false;
 		}
 
-		class iterator {
+		/*! \brief Iterator */
+		class Iterator {
+			/*! \brief Accessor Template for elements */
 			A a;
 
 		 public:
-			iterator(const A & a, const V ptr) : a(a) {
+			/*! \brief Iterator constructor
+			 * \param p pointer to current element
+			 * \param a accessor template
+			 */
+			Iterator(const A & a, const V ptr) : a(a) {
 				this->a._data = ptr;
 			}
 
-			iterator operator++() {
+			/*! \brief Next element
+			 * \note Element must provide a `next` method!
+			 */
+			Iterator operator++() {
 				assert(a._data != a.next());
 				a._data = a.next();
 				return *this;
 			}
 
-			bool operator!=(const iterator & o) const {
+			/*! \brief Compare current iterator element */
+			bool operator!=(const Iterator & o) const {
 				return a._data != o.a._data;
 			}
 
+			/*! \brief Get current element */
 			const A operator*() const {
 				return a;
 			}
 		};
 
-		iterator begin() const {
-			return iterator(_accessor, _begin);
+		/*! \brief Get Iterator for first element */
+		Iterator begin() const {
+			return Iterator(_accessor, _begin);
 		}
 
-		iterator end() const {
-			return iterator(_accessor, _end);
+		/*! \brief Get Iterator identicating end of list */
+		Iterator end() const {
+			return Iterator(_accessor, _end);
 		}
 	};
 
  public:
+	/*! \brief Start address of ELF in memory */
 	const uintptr_t start;
+
+	/*! \brief Size (in bytes) of ELF in memory */
 	const size_t length;
 
-	// Header
+	/*! \brief ELF Header */
 	struct Header : Def::Ehdr {
 		/*! \brief Check if this elf identification header is valid for ELFO */
 		bool valid() const {
@@ -242,9 +351,8 @@ class ELF : public ELF_Def::Structures<C> {
 
 	// Segments (Program header table)
 	struct Segment : Accessor<typename Def::Phdr> {
-		const ELF<C> & elf;
-
-		Segment(const ELF<C> & elf) : elf(elf) {}
+		/*! \brief Constructor for new Segment entry */
+		Segment(const ELF<C> & elf) : Accessor<typename Def::Phdr>(elf) {}
 
 		/*! \brief Segment Type */
 		typename Def::phdr_type type() const {
@@ -258,7 +366,7 @@ class ELF : public ELF_Def::Structures<C> {
 
 		/*! \brief Pointer to segment data */
 		void * data() const {
-			return reinterpret_cast<void*>(elf.start + this->_data->p_offset);
+			return reinterpret_cast<void*>(this->_elf.start + this->_data->p_offset);
 		}
 
 		/*! \brief Segment size (in ELF file)*/
@@ -303,65 +411,83 @@ class ELF : public ELF_Def::Structures<C> {
 
 		/*! \brief Get interpreter path */
 		const char * path() const {
-			return type() == Def::PT_INTERP ? reinterpret_cast<const char *>(elf.start + this->_data->p_offset) : nullptr;
+			return type() == Def::PT_INTERP ? reinterpret_cast<const char *>(this->_elf.start + this->_data->p_offset) : nullptr;
 		}
 	};
 
 	struct Section;
 
+	/*! \brief Symbol */
 	struct Symbol : Accessor<typename Def::Sym> {
-		const ELF<C> & elf;
+		/*! \brief Index of string table */
 		const uint16_t strtab;
 
-		Symbol(const ELF<C> & elf, uint16_t strtab = 0) : elf(elf), strtab(strtab) {}
+		/*! \brief Construct symbol
+		 * \param elf ELF object to which this symbol belongs to
+		 * \param strtab String table index associated with the symbol table for this symbol
+		 */
+		Symbol(const ELF<C> & elf, uint16_t strtab = 0) : Accessor<typename Def::Sym>(elf), strtab(strtab) {}
 
 		bool valid() const {
 			return strtab != 0 && (value() != 0 || size() != 0 || info() != 0 || other() != 0);
 		}
 
+		/*! \brief Symbol name */
 		const char * name() const {
-			return elf.string(strtab, this->_data->st_name);
+			return this->_elf.string(strtab, this->_data->st_name);
 		}
 
+		/*! \brief Symbol value */
 		uintptr_t value() const {
 			return this->_data->st_value;
 		}
 
+		/*! \brief Size of Symbol */
 		size_t size() const {
 			return this->_data->st_size;
 		}
 
+		/*! \brief Index of the section containing the symbol  */
 		uint16_t section_index() const {
 			return this->_data->st_shndx;
 		}
 
+		/*! \brief Section containing the symbol  */
 		Section section() const {
-			return elf.sections[section_index()];
+			return this->_elf.sections[section_index()];
 		}
 
+		/*! \brief Symbol info (including type and binding) */
 		unsigned char info() const {
 			return this->_data->st_info.value;
 		}
 
+		/*! \brief Symbol binding */
 		typename Def::sym_bind bind() const {
 			return reinterpret_cast<typename  Def::sym_bind>(this->_data->st_info.bind);
 		}
 
+		/*! \brief Symbol type */
 		typename Def::sym_type type() const {
 			return reinterpret_cast<typename  Def::sym_type>(this->_data->st_info.type);
 		}
 
+		/*! \brief Additional Symbol info (including visibility) */
 		unsigned char other() const {
 			return this->_data->st_other.value;
 		}
 
+		/*! \brief Symbol visibility */
 		typename Def::sym_visibility visibility() const {
 			return reinterpret_cast<typename  Def::sym_visibility>(this->_data->st_other.visibility);
 		}
 	};
 
+	/*! \brief Symbol Table
+	 * Use hash if possible
+	 */
 	struct SymbolTable : public Array<Symbol> {
-		const ELF<C> & elf;
+		const ELF<C> & _elf;
 		const typename Def::shdr_type section_type;
 		const void * header;
 		const uint16_t * const versions;
@@ -381,11 +507,16 @@ class ELF : public ELF_Def::Structures<C> {
 
 		/*! \brief Empty (non-existing) symbol table
 		 */
-		SymbolTable(const ELF<C> & elf) : elf(elf), section_type(Def::SHT_NULL), header(nullptr), versions(nullptr), Array<Symbol>(Symbol(elf, 0), 0, 0) {}
+		SymbolTable(const ELF<C> & elf) : _elf(elf), section_type(Def::SHT_NULL), header(nullptr), versions(nullptr), Array<Symbol>(Symbol(elf, 0), 0, 0) {}
+
+		/*! \brief Elf object */
+		const ELF<C> & elf() const {
+			return _elf;
+		}
 
 		/*! \brief Get symbol name by index */
 		inline const char * name(uint32_t idx) const {
-			return idx == Def::STN_UNDEF ? nullptr : elf.string(this->accessor.strtab, this->values[idx].st_name);
+			return idx == Def::STN_UNDEF ? nullptr : _elf.string(this->_accessor.strtab, this->_values[idx].st_name);
 		}
 
 		/*! \brief Get symbol version index by symbol index
@@ -413,7 +544,7 @@ class ELF : public ELF_Def::Structures<C> {
 					return index_by_gnuhash(search_name, required_version);
 				case Def::SHT_DYNSYM:
 				case Def::SHT_SYMTAB:
-					for (size_t i = 1; i < this->entries; i++)
+					for (size_t i = 1; i < this->_entries; i++)
 						if (this->strcmp(search_name, name(i)) == 0 && (required_version == Def::VER_NDX_UNKNOWN || required_version == version(i)))
 							return i;
 			}
@@ -446,7 +577,7 @@ class ELF : public ELF_Def::Structures<C> {
 		    SymbolTable(elf, section.type(), use_hash ? section.data() : nullptr, use_hash ? elf.sections[section.link()] : section, version_section) {}
 
 		SymbolTable(const ELF<C> & elf, const typename Def::shdr_type section_type, void * header, const Section & symbol_section, const Section & version_section) :
-		    elf(elf), section_type(section_type), header(header), versions(version_section.type() == Def::SHT_GNU_VERSYM ? version_section.get_versions() : nullptr),
+		    _elf(elf), section_type(section_type), header(header), versions(version_section.type() == Def::SHT_GNU_VERSYM ? version_section.get_versions() : nullptr),
 		    Array<Symbol>(Symbol(elf, symbol_section.link()), elf.start + symbol_section.offset(), symbol_section.size() / symbol_section.entry_size())
 			{
 			assert(section_type == Def::SHT_GNU_HASH || section_type == Def::SHT_HASH || section_type == Def::SHT_DYNSYM || section_type == Def::SHT_SYMTAB);
@@ -520,131 +651,161 @@ class ELF : public ELF_Def::Structures<C> {
 		}
 	};
 
+	/*! \brief Interface for a relocation entry */
+	struct Relocation {
+		virtual bool valid() const = 0;
+		virtual uintptr_t offset() const = 0;
+		virtual uintptr_t info() const = 0;
+		virtual Symbol symbol() const = 0;
+		virtual uint32_t symbol_index() const = 0;
+		virtual uint32_t type() const = 0;
+		virtual uintptr_t addend() const = 0;
+	};
 
-	/*! \brief Relocation entry (without addend) */
-	struct Relocation : Accessor<typename Def::Rel> {
-		const ELF<C> & elf;
-
+	/*! \brief Relocation entry without addend */
+	struct RelocationWithoutAddend : Relocation, Accessor<typename Def::Rel> {
 		/*! \brief Corresponding symbol table index */
 		const uint16_t symtab;
 
-		Relocation(const ELF<C> & elf, uint16_t symtab = 0) : elf(elf), symtab(symtab) {}
+		/*! \brief Construct relocation entry (without addend)
+		 * \param elf ELF object to which this relocation belongs to
+		 * \param symtab Symbol table index for this relocation
+		 */
+		RelocationWithoutAddend(const ELF<C> & elf, uint16_t symtab = 0) : Accessor<typename Def::Rel>(elf), symtab(symtab) {}
 
 		/*! \brief Valid relocation */
-		bool valid() const {
+		bool valid() const override {
 			return symtab != 0;
 		}
 
 		/*! \brief Address */
-		uintptr_t offset() const {
+		uintptr_t offset() const override {
 			return this->_data->r_offset;
 		}
 
 		/*! \brief Relocation type and symbol index */
-		uintptr_t info() const {
+		uintptr_t info() const override {
 			return this->_data->r_info.value;
 		}
 
 		/*! \brief Target symbol */
-		Symbol symbol() const {
-			return elf.symbol(symtab, this->_data->r_info.sym);
+		Symbol symbol() const override {
+			return this->_elf.symbol(symtab, this->_data->r_info.sym);
 		}
 
 		/*! \brief Index of target symbol in corresponding symbol table */
-		uint32_t symbol_index() const {
+		uint32_t symbol_index() const override {
 			return this->_data->r_info.sym;
 		}
 
-		/*! \brief relocation type (depending on architecture) */
-		uint32_t type() const {
+		/*! \brief Relocation type (depends on architecture) */
+		uint32_t type() const override {
 			return static_cast<uint32_t>(this->_data->r_info.type);
 		}
 
 		/*! \brief Addend (which is always zero for this relocation type) */
-		uintptr_t addend() const {
+		uintptr_t addend() const override {
 			return 0;
 		}
 	};
 
 	/*! \brief Relocation entry with addend */
-	struct RelocationAddend : Accessor<typename Def::Rela> {
-		const ELF<C> & elf;
-
+	struct RelocationWithAddend : Relocation, Accessor<typename Def::Rela> {
 		/*! \brief Corresponding symbol table index */
 		const uint16_t symtab;
 
-		RelocationAddend(const ELF<C> & elf, uint16_t symtab = 0) : elf(elf), symtab(symtab) {}
+		/*! \brief Construct relocation entry (with addend)
+		 * \param elf ELF object to which this relocation belongs to
+		 * \param symtab Symbol table index for this relocation
+		 */
+		RelocationWithAddend(const ELF<C> & elf, uint16_t symtab = 0) : Accessor<typename Def::Rela>(elf), symtab(symtab) {}
 
 		/*! \brief Valid relocation */
-		bool valid() const {
+		bool valid() const override {
 			return symtab != 0;
 		}
 
 		/*! \brief Address */
-		uintptr_t offset() const {
+		uintptr_t offset() const override {
 			return this->_data->r_offset;
 		}
 
 		/*! \brief Relocation type and symbol index */
-		uintptr_t info() const {
+		uintptr_t info() const override {
 			return this->_data->r_info.value;
 		}
 
 		/*! \brief Target symbol */
-		Symbol symbol() const {
-			return elf.symbol(symtab, this->_data->r_info.sym);
+		Symbol symbol() const override {
+			return this->_elf.symbol(symtab, this->_data->r_info.sym);
 		}
 
 		/*! \brief Index of target symbol in corresponding symbol table */
-		uint32_t symbol_index() const {
+		uint32_t symbol_index() const override {
 			return this->_data->r_info.sym;
 		}
 
-		/*! \brief relocation type (depending on architecture) */
-		uint32_t type() const {
+		/*! \brief Relocation type (depends on architecture) */
+		uint32_t type() const override {
 			return static_cast<uint32_t>(this->_data->r_info.type);
 		}
 
-		/*! \brief Addend (which is always zero for this relocation type) */
-		uintptr_t addend() const {
+		/*! \brief Addend */
+		uintptr_t addend() const override {
 			return this->_data->r_addend;
 		}
 	};
 
+	/*! \brief Dynamic table entry */
 	struct Dynamic : Accessor<typename Def::Dyn> {
-		const ELF<C> & elf;
+		/*! \brief Index of string table */
 		const uint16_t strtab;
 
-		Dynamic(const ELF<C> & elf, uint16_t strtab = 0) : elf(elf), strtab(strtab) {}
+		/*! \brief construct dynamic table entry
+		 * \param elf ELF object to which this symbol belongs to
+		 * \brief strtab Index of string table
+		 */
+		Dynamic(const ELF<C> & elf, uint16_t strtab = 0) : Accessor<typename Def::Dyn>(elf), strtab(strtab) {}
 
+		/*! \brief Valid dynamic table? */
 		bool valid() const {
 			return strtab != 0;
 		}
 
+		/*! \brief Tag of entry */
 		typename Def::dyn_tag tag() const {
 			return (typename Def::dyn_tag)(this->_data->d_tag);
 		}
 
+		/*! \brief Value of entry */
 		uintptr_t value() const {
 			return this->_data->d_un.d_val;
 		}
 
+		/*! \brief Associated string
+		 * \note Availability depending on tag!
+		 */
 		const char * string() const {
-			return elf.string(strtab, this->_data->d_un.d_val);
+			return this->_elf.string(strtab, this->_data->d_un.d_val);
 		}
 	};
 
+	/*! \brief GNU Note entry */
 	struct Note : Accessor<typename Def::Nhdr> {
-		const ELF<C> & elf;
-
-		Note(const ELF<C> & elf, uint16_t link = 0) : elf(elf) {
+		/*! \brief Construct note entry
+		 * \param elf ELF object to which this note belongs to
+		 * \param link Associated section index (must be `0`)
+		 */
+		Note(const ELF<C> & elf, uint16_t link = 0) : Accessor<typename Def::Nhdr>(elf) {
 			assert(link == 0);
 		}
 
+		/*! \brief Note name */
 		const char * name() const {
 			return this->_data->n_namesz == 0 ? nullptr : (reinterpret_cast<const char *>(this->_data) + sizeof(typename Def::Nhdr));
 		}
 
+		/*! \brief Note description */
 		const void * description() const {
 			return this->_data->n_descsz == 0 ? nullptr : reinterpret_cast<const void *>(reinterpret_cast<uintptr_t>(this->_data) + sizeof(typename Def::Nhdr) + align(this->_data->n_namesz));
 		}
@@ -655,6 +816,7 @@ class ELF : public ELF_Def::Structures<C> {
 			return this->_data->n_descsz;
 		}
 
+		/*! \brief Note type */
 		typename Def::nhdr_type type() const {
 			return this->_data->n_type;
 		}
@@ -673,22 +835,29 @@ class ELF : public ELF_Def::Structures<C> {
 			return reinterpret_cast<typename Def::Nhdr*>(next);
 		}
 
+		/*! \brief Helper to perform 4 byte alignment of value */
 		template<typename T>
 		static inline T align(T size) {
 			return (size + 3)  & (~0x3);  // 4 byte alignment
 		}
 	};
 
+	/*! \brief Version definition entry */
 	struct VersionDefinition : Accessor<typename Def::Verdef> {
+		/*! \brief Auxiliary information for version definition */
 		struct Auxiliary : Accessor<typename Def::Verdaux> {
-			const ELF<C> & elf;
+			/*! \brief String table index */
 			const uint16_t strtab;
 
-			Auxiliary(const ELF<C> & elf, uint16_t strtab) : elf(elf), strtab(strtab) {}
+			/*! \brief Construct auxiliary entry for version definition
+			 * \param elf ELF object to which this entry belongs to
+			 * \param strtab String table index for this erntry
+			 */
+			Auxiliary(const ELF<C> & elf, uint16_t strtab) : Accessor<typename Def::Verdaux>(elf), strtab(strtab) {}
 
 			/*! \brief Definition name */
 			const char * name() const {
-				return elf.string(strtab, this->_data->vda_name);
+				return this->_elf.string(strtab, this->_data->vda_name);
 			}
 
 		 private:
@@ -713,20 +882,26 @@ class ELF : public ELF_Def::Structures<C> {
 		}
 
 	public:
-		const ELF<C> & elf;
+		/*! \brief String table index */
 		const uint16_t strtab;
 
-		VersionDefinition(const ELF<C> & elf, uint16_t strtab = 0) : elf(elf), strtab(strtab) {}
+		/*! \brief Construct version definition entry
+		 * \param elf ELF object to which this entry belongs to
+		 * \param strtab String table index for this erntry
+		 */
+		VersionDefinition(const ELF<C> & elf, uint16_t strtab = 0) : Accessor<typename Def::Verdef>(elf), strtab(strtab) {}
 
-		/*! \brief Version for this definition */
+		/*! \brief Version revision */
 		uint16_t revision() const {
 			return this->_data->vd_version;
 		}
 
+		/*! \brief Version information */
 		uint16_t flags() const {
 			return this->_data->vd_flags;
 		}
 
+		/*! \brief Weak linkage */
 		bool weak() const {
 			return this->_data->vd_weak == 1;
 		}
@@ -750,7 +925,7 @@ class ELF : public ELF_Def::Structures<C> {
 		List<Auxiliary> auxiliary() const {
 			uintptr_t first_adr = reinterpret_cast<uintptr_t>(this->_data) + this->_data->vd_aux;
 			typename Def::Verdaux * first = this->_data->vd_aux == 0 ? nullptr : reinterpret_cast<typename Def::Verdaux *>(first_adr);
-			return List<Auxiliary>(Auxiliary(elf, strtab), first, nullptr);
+			return List<Auxiliary>(Auxiliary(this->_elf, strtab), first, nullptr);
 		}
 
 		/*! \brief Number of version definition auxiliary information */
@@ -759,22 +934,31 @@ class ELF : public ELF_Def::Structures<C> {
 		}
 	};
 
+	/*! \brief Version needed entry */
 	struct VersionNeeded : Accessor<typename Def::Verneed> {
+
+		/*! \brief Auxiliary information for version needed */
 		struct Auxiliary : Accessor<typename Def::Vernaux> {
-			const ELF<C> & elf;
+			/*! \brief String table index */
 			const uint16_t strtab;
 
-			Auxiliary(const ELF<C> & elf, uint16_t strtab) : elf(elf), strtab(strtab) {}
+			/*! \brief Construct auxiliary entry for version definition
+			 * \param elf ELF object to which this entry belongs to
+			 * \param strtab String table index for this erntry
+			 */
+			Auxiliary(const ELF<C> & elf, uint16_t strtab) : Accessor<typename Def::Vernaux>(elf), strtab(strtab) {}
 
 			/*! \brief hash value of dependency name */
 			uint32_t hash() const {
 				return this->_data->vna_hash;
 			}
 
+			/*! \brief Dependency specific information */
 			uint16_t flags() const {
 				return this->_data->vna_flags;
 			}
 
+			/*! \brief Weak linkage */
 			bool weak() const {
 				return this->_data->vna_weak == 1;
 			}
@@ -786,7 +970,7 @@ class ELF : public ELF_Def::Structures<C> {
 
 			/*! \brief Dependency name */
 			const char * name() const {
-				return elf.string(strtab, this->_data->vna_name);
+				return this->_elf.string(strtab, this->_data->vna_name);
 			}
 
 		 private:
@@ -811,10 +995,14 @@ class ELF : public ELF_Def::Structures<C> {
 		}
 
 	public:
-		const ELF<C> & elf;
+		/*! \brief String table index */
 		const uint16_t strtab;
 
-		VersionNeeded(const ELF<C> & elf, uint16_t strtab = 0) : elf(elf), strtab(strtab) {}
+		/*! \brief Construct version needed entry
+		 * \param elf ELF object to which this entry belongs to
+		 * \param strtab String table index for this erntry
+		 */
+		VersionNeeded(const ELF<C> & elf, uint16_t strtab = 0) : Accessor<typename Def::Verneed>(elf), strtab(strtab) {}
 
 		/*! \brief Version for this dependency */
 		typename Def::verneed_version version() const {
@@ -823,14 +1011,14 @@ class ELF : public ELF_Def::Structures<C> {
 
 		/*! \brief filename for this dependency */
 		const char * file() const {
-			return elf.string(strtab, this->_data->vn_file);
+			return this->_elf.string(strtab, this->_data->vn_file);
 		}
 
 		/*! \brief List of version dependency auxiliary information */
 		List<Auxiliary> auxiliary() const {
 			uintptr_t first_adr = reinterpret_cast<uintptr_t>(this->_data) + this->_data->vn_aux;
 			typename Def::Vernaux * first = this->_data->vn_aux == 0 ? nullptr : reinterpret_cast<typename Def::Vernaux *>(first_adr);
-			return List<Auxiliary>(Auxiliary(elf, strtab), first, nullptr);
+			return List<Auxiliary>(Auxiliary(this->_elf, strtab), first, nullptr);
 		}
 
 		/*! \brief Number of version dependency auxiliary information */
@@ -839,12 +1027,14 @@ class ELF : public ELF_Def::Structures<C> {
 		}
 	};
 
-	// Sections (Section header table)
+	/*! \brief Entry of section header table */
 	struct Section : Accessor<typename Def::Shdr> {
-		const ELF<C> & elf;
+		/*! \brief Construct new section header entry
+		 * \param elf ELF object to which this entry belongs to
+		 */
+		Section(const ELF<C> & elf) : Accessor<typename Def::Shdr>(elf) {}
 
-		Section(const ELF<C> & elf) : elf(elf) {}
-
+		/*! \brief Section type */
 		typename Def::shdr_type type() const {
 			return this->_data->sh_type;
 		}
@@ -916,7 +1106,7 @@ class ELF : public ELF_Def::Structures<C> {
 
 		/*! \brief Pointer to dection contents */
 		void * data() const {
-			return reinterpret_cast<void*>(elf.start + this->_data->sh_offset);
+			return reinterpret_cast<void*>(this->_elf.start + this->_data->sh_offset);
 		}
 
 		/*! \brief Section size in bytes */
@@ -950,50 +1140,61 @@ class ELF : public ELF_Def::Structures<C> {
 
 		/*! \brief Section name */
 		const char * name() const {
-			return elf.string(elf.header.e_shstrndx, this->_data->sh_name);
+			return this->_elf.string(this->_elf.header.e_shstrndx, this->_data->sh_name);
 		}
 
+		/*! \brief Get contents of notes section as \ref List of \ref Note elements */
 		List<Note> get_notes() const {
 			assert(type() == Def::SHT_NOTE);
 			return get_list<Note>();
 		}
 
+		/*! \brief Get contents of symbol version section as symbol index array
+		 * \note Each version entry corresponds to the entry with the same index in the linked symbol table
+		 */
 		const uint16_t * get_versions() const {
 			assert(type() == Def::SHT_GNU_VERSYM);
 			assert(entry_size() == sizeof(uint16_t));
 			return static_cast<uint16_t *>(data());
 		}
 
+		/*! \brief Get contents of version definition section as \ref List of \ref VersionDefinition elements  */
 		List<VersionDefinition> get_version_definition() const {
 			assert(type() == Def::SHT_GNU_VERDEF);
 			return get_list<VersionDefinition>(true);
 		}
 
+		/*! \brief Get contents of version needed section as \ref List of \ref VersionNeeded elements  */
 		List<VersionNeeded> get_version_needed() const {
 			assert(type() == Def::SHT_GNU_VERNEED);
 			return get_list<VersionNeeded>(true);
 		}
 
+		/*! \brief Get contents of symbol table section as \ref Array of \ref Symbol elements  */
 		Array<Symbol> get_symbols() const {
 			assert(type() == Def::SHT_SYMTAB || type() == Def::SHT_DYNSYM);
 			return get_array<Symbol>();
 		}
 
+		/*! \brief Get contents of symbol table section
+		 * \param version Pointer to version section (if available)
+		 */
 		SymbolTable get_symbol_table(const Section * const version = nullptr) const {
 			assert(type() == Def::SHT_SYMTAB || type() == Def::SHT_DYNSYM || type() == Def::SHT_HASH || type() == Def::SHT_GNUHASH);
-			return SymbolTable(elf, *this, version);
+			return SymbolTable(this->_elf, *this, version);
 		}
 
+		/*! \brief Get contents of dynamic secion */
 		Array<Dynamic> get_dynamic() const {
 			assert(type() == Def::SHT_DYNAMIC);
 			// Calculate length
-			uintptr_t ptr = elf.start + offset();
+			uintptr_t ptr = this->_elf.start + offset();
 			typename Def::Dyn * dyn = reinterpret_cast<typename Def::Dyn *>(ptr);
 			assert(entry_size() == sizeof(*dyn));
 			size_t limit = this->entries() - 1;
 			size_t entries = 0;
 			for (; entries < limit && dyn[entries].d_tag != Def::DT_NULL; entries++) {}
-			return Array<Dynamic>(Dynamic(elf, link()), ptr, entries + 1);
+			return Array<Dynamic>(Dynamic(this->_elf, link()), ptr, entries + 1);
 		}
 
 		/*! \brief Array with elements
@@ -1003,10 +1204,10 @@ class ELF : public ELF_Def::Structures<C> {
 		template<typename ACCESSOR>
 		Array<ACCESSOR> get_array() const {
 			if (type() == Def::SHT_NULL) {
-				return Array<ACCESSOR>(ACCESSOR(elf, link()), 0, 0);
+				return Array<ACCESSOR>(ACCESSOR(this->_elf, link()), 0, 0);
 			} else {
 				assert(entry_size() == sizeof(*ACCESSOR::_data));
-				return Array<ACCESSOR>(ACCESSOR(elf, link()), elf.start + offset(), entries());
+				return Array<ACCESSOR>(ACCESSOR(this->_elf, link()), this->_elf.start + offset(), entries());
 			}
 		}
 
@@ -1019,24 +1220,30 @@ class ELF : public ELF_Def::Structures<C> {
 		template<typename ACCESSOR>
 		List<ACCESSOR> get_list(bool last_is_nullptr = false) const {
 			if (type() == Def::SHT_NULL) {
-				return List<ACCESSOR>(ACCESSOR(elf, 0), nullptr, nullptr);
+				return List<ACCESSOR>(ACCESSOR(this->_elf, 0), nullptr, nullptr);
 			} else {
 				using V = decltype(ACCESSOR::_data);
 				assert(entry_size() == 0);
-				uintptr_t begin_adr = elf.start + offset();
-				return List<ACCESSOR>(ACCESSOR(elf, link()), reinterpret_cast<const V>(begin_adr), last_is_nullptr ? nullptr : reinterpret_cast<const V>(begin_adr + size()));
+				uintptr_t begin_adr = this->_elf.start + offset();
+				return List<ACCESSOR>(ACCESSOR(this->_elf, link()), reinterpret_cast<const V>(begin_adr), last_is_nullptr ? nullptr : reinterpret_cast<const V>(begin_adr + size()));
 			}
 		}
 	};
 
 
-	// Header
+	/*! \brief Header */
 	const Header &header;
 
+	/*! \brief Segment entries (from program header table) */
 	Array<Segment> segments;
 
+	/*! \brief Section entries (from section header table) */
 	Array<Section> sections;
 
+	/*! \brief Construct new ELF object
+	 * \paran start Pointer to start adress of memory mapped file
+	 * \param length Length of memory mapped file
+	 */
 	ELF(uintptr_t start, size_t length) : start(start), length(length),
 	    header(*reinterpret_cast<Header*>(start)),
 	    segments(Segment(*this), start + header.e_phoff, header.e_phnum),
@@ -1046,6 +1253,11 @@ class ELF : public ELF_Def::Structures<C> {
 		assert(sizeof(typename Def::Shdr) == header.e_shentsize);
 	}
 
+	/*! \brief get class of ELF object */
+/*	static typename Def::ident_class class() {
+		return C;
+	}
+*/
 	/*! \brief Check if this file seems to be valid (using file size and offsets) */
 	bool valid() const {
 		if (length < sizeof(Header)
@@ -1066,7 +1278,7 @@ class ELF : public ELF_Def::Structures<C> {
 		return true;
 	}
 
- protected:
+ //protected:
 	template<typename ACCESSOR>
 	Array<ACCESSOR> get(const ACCESSOR & t, uintptr_t offset, size_t size) const {
 		return Array<ACCESSOR>(t, offset, size);
@@ -1077,6 +1289,11 @@ class ELF : public ELF_Def::Structures<C> {
 		return Array<ACCESSOR>(ACCESSOR(*this), 0, 0);
 	}
 
+	/*! \brief Get section by offset
+	 * \note required by \ref Dynamic
+	 * \param offset relative address of start of section
+	 * \return Section or pointer to NULL section if not found
+	 */
 	const Section section_by_offset(uintptr_t offset) const {
 		for (auto &s : sections)
 			if (s.offset() == offset)
@@ -1086,19 +1303,35 @@ class ELF : public ELF_Def::Structures<C> {
 		return sections[0];
 	}
 
+	/*! \brief Get symbol
+	 * \param section symbol table section
+	 * \param index index of symbol in table
+	 */
 	Symbol symbol(const Section & section, uint32_t index) const {
 		return section.get_symbols()[index];
 	}
 
+	/*! \brief Get symbol
+	 * \param section_index symbol table section index
+	 * \param index index of symbol in table
+	 */
 	Symbol symbol(uint16_t section_index, uint32_t index) const {
 		return symbol(sections[section_index], index);
 	}
 
+	/*! \brief Get string
+	 * \param section string table section
+	 * \param offset offset of string in table
+	 */
 	const char * string(const Section & section, uint32_t offset) const {
 		assert(section.type() == Def::SHT_STRTAB);
 		return reinterpret_cast<const char *>(start + section.offset() + offset);
 	}
 
+	/*! \brief Get string
+	 * \param section_index string table section index
+	 * \param offset offset of string in table
+	 */
 	const char * string(uint16_t section_index, uint32_t offset) const {
 		return string(sections[section_index], offset);
 	}

@@ -16,10 +16,10 @@ class ELF_Dyn : public ELF<C> {
 	using Section = typename ELF<C>::Section;
 	using Dynamic = typename ELF<C>::Dynamic;
 	using SymbolTable = typename ELF<C>::SymbolTable;
-	using Relocation = typename ELF<C>::Relocation;
-	using RelocationAddend = typename ELF<C>::RelocationAddend;
 	using VersionNeeded = typename ELF<C>::VersionNeeded;
 	using VersionDefinition = typename ELF<C>::VersionDefinition;
+	using RelocationWithAddend = typename ELF<C>::RelocationWithAddend;
+	using RelocationWithoutAddend = typename ELF<C>::RelocationWithoutAddend;
 
  private:
 	using Def = typename ELF_Def::Structures<C>;
@@ -72,8 +72,8 @@ class ELF_Dyn : public ELF<C> {
 	SymbolTable symbols;
 	List<VersionNeeded> version_needed;
 	List<VersionDefinition> version_definition;
-	Array<Relocation> relocations;
-	Array<RelocationAddend> relocations_addend;
+	Array<RelocationWithoutAddend> relocations;
+	Array<RelocationWithAddend> relocations_addend;
 
 	ELF_Dyn(uintptr_t start, size_t length)
 	  : ELF<C>(start, length),
@@ -81,8 +81,8 @@ class ELF_Dyn : public ELF<C> {
 	    symbols(find_dynamic_symbol_table()),
 	    version_needed(get_dynamic_section(Def::DT_VERNEED).template get_list<VersionNeeded>(true)),
 	    version_definition(get_dynamic_section(Def::DT_VERDEF).template get_list<VersionDefinition>(true)),
-	    relocations(get_dynamic_section(Def::DT_REL).template get_array<Relocation>()),
-	    relocations_addend(get_dynamic_section(Def::DT_RELA).template get_array<RelocationAddend>()) {
+	    relocations(get_dynamic_section(Def::DT_REL).template get_array<RelocationWithoutAddend>()),
+	    relocations_addend(get_dynamic_section(Def::DT_RELA).template get_array<RelocationWithAddend>()) {
 
 		for (auto & v : version_needed)
 			for (auto & aux : v.auxiliary()) {
