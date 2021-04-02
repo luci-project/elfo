@@ -193,16 +193,6 @@ struct Structures : public Identification, public Constants, public Types<C> {
 		uint32_t vna_name;          ///< Dependency name string offset
 		uint32_t vna_next;          ///< Offset in bytes to next vernaux entry
 	};
-
-
-	/*! \brief Auxiliary vector */
-	struct Aux {
-		elfptr_t a_type;
-		union {
-			elfptr_t a_val;
-			elfptr_t a_ptr;
-		} a_un;
-	} __attribute__((packed));
 };
 
 
