@@ -75,8 +75,8 @@ class ELF_Dyn : public ELF<C> {
 	Array<RelocationWithoutAddend> relocations;
 	Array<RelocationWithAddend> relocations_addend;
 
-	ELF_Dyn(uintptr_t start, size_t length)
-	  : ELF<C>(start, length),
+	ELF_Dyn(uintptr_t start)
+	  : ELF<C>(start),
 	    dynamic(find_dynamic()),
 	    symbols(find_dynamic_symbol_table()),
 	    version_needed(get_dynamic_section(Def::DT_VERNEED).template get_list<VersionNeeded>(true)),

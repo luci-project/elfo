@@ -15,7 +15,7 @@
 #include "elf_dyn.hpp"
 
 #include "_str_const.hpp"
-#include "_str_const.hpp"
+#include "_str_ident.hpp"
 
 template <ELFCLASS C, class RELOC>
 void elfreloc(const ELF_Dyn<C> & elf, const typename ELF_Dyn<C>::Symbol & sym, const typename ELF_Dyn<C>::template Array<RELOC> & relocations) {
@@ -70,8 +70,8 @@ void elfsymbol(const ELF_Dyn<C> & elf, const typename ELF_Dyn<C>::Symbol & sym) 
 
 template<ELFCLASS C>
 bool elflookup(void * addr, size_t length, const std::vector<const char*> & symbols) {
-	ELF_Dyn<C> elf(reinterpret_cast<uintptr_t>(addr), length);
-	if (!elf.valid()) {
+	ELF_Dyn<C> elf(reinterpret_cast<uintptr_t>(addr));
+	if (!elf.valid(length)) {
 		std::cerr << "No valid ELF file!" << std::endl;
 		return false;
 	}

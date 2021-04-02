@@ -15,11 +15,13 @@
  * \tparam C 32- or 64-bit elf class
  */
 template<ELFCLASS C>
-class ELF : public ELF_Def::Structures<C> {
+struct ELF : public ELF_Def::Structures<C> {
 	using Def = typename ELF_Def::Structures<C>;
 	using elfptr_t = typename Def::Elf_Addr;
 
- protected:
+	/*! \brief Start address of ELF in memory */
+	const uintptr_t start;
+
 	/*! \brief Accessor to wrap elements of a given data type
 	 * \tparam DT data type of element
 	 */
@@ -32,7 +34,10 @@ class ELF : public ELF_Def::Structures<C> {
 		const DT * _data = nullptr;
 
 		/*! \brief Constructor */
-		Accessor(const ELF<C> & elf) : _elf(elf) {}
+		explicit Accessor(const ELF<C> & elf) : _elf(elf) {}
+
+		/*! \brief Copy-constructor */
+		explicit Accessor(const Accessor<DT> & accessor) : _elf(accessor._elf), _data(accessor._data) {}
 
 		/*! \brief Elf object */
 		const ELF<C> & elf() const {
@@ -282,12 +287,6 @@ class ELF : public ELF_Def::Structures<C> {
 		}
 	};
 
- public:
-	/*! \brief Start address of ELF in memory */
-	const uintptr_t start;
-
-	/*! \brief Size (in bytes) of ELF in memory */
-	const size_t length;
 
 	/*! \brief ELF Header */
 	struct Header : Def::Ehdr {
@@ -352,7 +351,7 @@ class ELF : public ELF_Def::Structures<C> {
 	// Segments (Program header table)
 	struct Segment : Accessor<typename Def::Phdr> {
 		/*! \brief Constructor for new Segment entry */
-		Segment(const ELF<C> & elf) : Accessor<typename Def::Phdr>(elf) {}
+		explicit Segment(const ELF<C> & elf) : Accessor<typename Def::Phdr>(elf) {}
 
 		/*! \brief Segment Type */
 		typename Def::phdr_type type() const {
@@ -426,8 +425,9 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \param elf ELF object to which this symbol belongs to
 		 * \param strtab String table index associated with the symbol table for this symbol
 		 */
-		Symbol(const ELF<C> & elf, uint16_t strtab = 0) : Accessor<typename Def::Sym>(elf), strtab(strtab) {}
+		explicit Symbol(const ELF<C> & elf, uint16_t strtab = 0) : Accessor<typename Def::Sym>(elf), strtab(strtab) {}
 
+		/*! \brief Is the symbol valid? */
 		bool valid() const {
 			return strtab != 0 && (value() != 0 || size() != 0 || info() != 0 || other() != 0);
 		}
@@ -507,7 +507,7 @@ class ELF : public ELF_Def::Structures<C> {
 
 		/*! \brief Empty (non-existing) symbol table
 		 */
-		SymbolTable(const ELF<C> & elf) : _elf(elf), section_type(Def::SHT_NULL), header(nullptr), versions(nullptr), Array<Symbol>(Symbol(elf, 0), 0, 0) {}
+		explicit SymbolTable(const ELF<C> & elf) : Array<Symbol>(Symbol(elf, 0), 0, 0), _elf(elf), section_type(Def::SHT_NULL), header(nullptr), versions(nullptr) {}
 
 		/*! \brief Elf object */
 		const ELF<C> & elf() const {
@@ -577,9 +577,8 @@ class ELF : public ELF_Def::Structures<C> {
 		    SymbolTable(elf, section.type(), use_hash ? section.data() : nullptr, use_hash ? elf.sections[section.link()] : section, version_section) {}
 
 		SymbolTable(const ELF<C> & elf, const typename Def::shdr_type section_type, void * header, const Section & symbol_section, const Section & version_section) :
-		    _elf(elf), section_type(section_type), header(header), versions(version_section.type() == Def::SHT_GNU_VERSYM ? version_section.get_versions() : nullptr),
-		    Array<Symbol>(Symbol(elf, symbol_section.link()), elf.start + symbol_section.offset(), symbol_section.size() / symbol_section.entry_size())
-			{
+		    Array<Symbol>(Symbol(elf, symbol_section.link()), elf.start + symbol_section.offset(), symbol_section.size() / symbol_section.entry_size()),
+		    _elf(elf), section_type(section_type), header(header), versions(version_section.type() == Def::SHT_GNU_VERSYM ? version_section.get_versions() : nullptr) {
 			assert(section_type == Def::SHT_GNU_HASH || section_type == Def::SHT_HASH || section_type == Def::SHT_DYNSYM || section_type == Def::SHT_SYMTAB);
 			assert(section_type == Def::SHT_DYNSYM || section_type == Def::SHT_SYMTAB || header != nullptr);
 		}
@@ -671,7 +670,7 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \param elf ELF object to which this relocation belongs to
 		 * \param symtab Symbol table index for this relocation
 		 */
-		RelocationWithoutAddend(const ELF<C> & elf, uint16_t symtab = 0) : Accessor<typename Def::Rel>(elf), symtab(symtab) {}
+		explicit RelocationWithoutAddend(const ELF<C> & elf, uint16_t symtab = 0) : Accessor<typename Def::Rel>(elf), symtab(symtab) {}
 
 		/*! \brief Valid relocation */
 		bool valid() const override {
@@ -718,7 +717,7 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \param elf ELF object to which this relocation belongs to
 		 * \param symtab Symbol table index for this relocation
 		 */
-		RelocationWithAddend(const ELF<C> & elf, uint16_t symtab = 0) : Accessor<typename Def::Rela>(elf), symtab(symtab) {}
+		explicit RelocationWithAddend(const ELF<C> & elf, uint16_t symtab = 0) : Accessor<typename Def::Rela>(elf), symtab(symtab) {}
 
 		/*! \brief Valid relocation */
 		bool valid() const override {
@@ -765,7 +764,7 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \param elf ELF object to which this symbol belongs to
 		 * \brief strtab Index of string table
 		 */
-		Dynamic(const ELF<C> & elf, uint16_t strtab = 0) : Accessor<typename Def::Dyn>(elf), strtab(strtab) {}
+		explicit Dynamic(const ELF<C> & elf, uint16_t strtab = 0) : Accessor<typename Def::Dyn>(elf), strtab(strtab) {}
 
 		/*! \brief Valid dynamic table? */
 		bool valid() const {
@@ -796,7 +795,7 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \param elf ELF object to which this note belongs to
 		 * \param link Associated section index (must be `0`)
 		 */
-		Note(const ELF<C> & elf, uint16_t link = 0) : Accessor<typename Def::Nhdr>(elf) {
+		explicit Note(const ELF<C> & elf, uint16_t link = 0) : Accessor<typename Def::Nhdr>(elf) {
 			assert(link == 0);
 		}
 
@@ -889,7 +888,7 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \param elf ELF object to which this entry belongs to
 		 * \param strtab String table index for this erntry
 		 */
-		VersionDefinition(const ELF<C> & elf, uint16_t strtab = 0) : Accessor<typename Def::Verdef>(elf), strtab(strtab) {}
+		explicit VersionDefinition(const ELF<C> & elf, uint16_t strtab = 0) : Accessor<typename Def::Verdef>(elf), strtab(strtab) {}
 
 		/*! \brief Version revision */
 		uint16_t revision() const {
@@ -1002,7 +1001,7 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \param elf ELF object to which this entry belongs to
 		 * \param strtab String table index for this erntry
 		 */
-		VersionNeeded(const ELF<C> & elf, uint16_t strtab = 0) : Accessor<typename Def::Verneed>(elf), strtab(strtab) {}
+		explicit VersionNeeded(const ELF<C> & elf, uint16_t strtab = 0) : Accessor<typename Def::Verneed>(elf), strtab(strtab) {}
 
 		/*! \brief Version for this dependency */
 		typename Def::verneed_version version() const {
@@ -1032,7 +1031,7 @@ class ELF : public ELF_Def::Structures<C> {
 		/*! \brief Construct new section header entry
 		 * \param elf ELF object to which this entry belongs to
 		 */
-		Section(const ELF<C> & elf) : Accessor<typename Def::Shdr>(elf) {}
+		explicit Section(const ELF<C> & elf) : Accessor<typename Def::Shdr>(elf) {}
 
 		/*! \brief Section type */
 		typename Def::shdr_type type() const {
@@ -1242,9 +1241,8 @@ class ELF : public ELF_Def::Structures<C> {
 
 	/*! \brief Construct new ELF object
 	 * \paran start Pointer to start adress of memory mapped file
-	 * \param length Length of memory mapped file
 	 */
-	ELF(uintptr_t start, size_t length) : start(start), length(length),
+	ELF(uintptr_t start) : start(start),
 	    header(*reinterpret_cast<Header*>(start)),
 	    segments(Segment(*this), start + header.e_phoff, header.e_phnum),
 	    sections(Section(*this), start + header.e_shoff, header.e_shnum) {
@@ -1258,21 +1256,23 @@ class ELF : public ELF_Def::Structures<C> {
 		return C;
 	}
 */
-	/*! \brief Check if this file seems to be valid (using file size and offsets) */
-	bool valid() const {
-		if (length < sizeof(Header)
+	/*! \brief Check if this file seems to be valid (using file size and offsets)
+	 * \param file_size Length of memory mapped file
+	 */
+	bool valid(size_t file_size) const {
+		if (file_size < sizeof(Header)
 		 || !header.valid()
-		 || length < header.e_ehsize
-		 || length < header.e_phoff + header.e_phentsize * header.e_phnum
-		 || length < header.e_shoff + header.e_shentsize * header.e_shnum)
+		 || file_size < header.e_ehsize
+		 || file_size < header.e_phoff + header.e_phentsize * header.e_phnum
+		 || file_size < header.e_shoff + header.e_shentsize * header.e_shnum)
 			return false;
 
 		for (auto & section : sections)
-			if (section.type() != Def::SHT_NOBITS && length < section.offset() + section.size())
+			if (section.type() != Def::SHT_NOBITS && file_size < section.offset() + section.size())
 				return false;
 
 		for (auto & segment : segments)
-			if (length < segment.offset() + segment.size())
+			if (file_size < segment.offset() + segment.size())
 				return false;
 
 		return true;

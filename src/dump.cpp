@@ -103,7 +103,7 @@ class Dump {
 	}
 
  public:
-	Dump(const char * buffer, size_t length) : elf(reinterpret_cast<uintptr_t>(buffer), length) {}
+	Dump(const char * buffer) : elf(reinterpret_cast<uintptr_t>(buffer)) {}
 
 	void elf_header() {
 		// Header
@@ -513,11 +513,11 @@ int main(int argc, char * argv[]) {
 	// Dump correct class
 	switch (ident->elfclass()) {
 		case ELFCLASS::ELFCLASS32:
-			Dump<ELFCLASS::ELFCLASS32>(buf, length).all();
+			Dump<ELFCLASS::ELFCLASS32>(buf).all();
 			return 0;
 
 		case ELFCLASS::ELFCLASS64:
-			Dump<ELFCLASS::ELFCLASS64>(buf, length).all();
+			Dump<ELFCLASS::ELFCLASS64>(buf).all();
 			return 0;
 
 		default:

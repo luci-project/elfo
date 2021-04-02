@@ -24,10 +24,11 @@ struct GnuHash_header {
  * \return hash value
  */
 static inline uint32_t hash(const char *s) {
-	uint32_t g, h = 0;
+	uint32_t h = 0;
 	for (; *s; s++) {
 		h = (h << 4) + *s;
-		if (g = h & 0xf0000000)
+		const uint32_t g = h & 0xf0000000;
+		if (g != 0)
 			h ^= g >> 24;
 		h &= ~g;
 	}
