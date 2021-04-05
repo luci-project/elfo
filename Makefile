@@ -1,4 +1,4 @@
-INCLUDEDIR = include/
+INCLUDEDIR := include/
 DEPDIR := .deps
 CXXFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$@.d -Og -g -I include/
 SOURCES := $(wildcard src/*.cpp)

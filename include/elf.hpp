@@ -534,7 +534,7 @@ struct ELF : public ELF_Def::Structures<C> {
 		 * \param required_version required version or VER_NDX_UNKNOWN if none
 		 * \return index of object or STN_UNDEF
 		 */
-		size_t index(const char * search_name, uint32_t required_version = Def::VER_NDX_UNKNOWN) const {
+		size_t index(const char * search_name, uint16_t required_version = Def::VER_NDX_UNKNOWN) const {
 			if (required_version != Def::VER_NDX_UNKNOWN && versions == nullptr)
 				required_version = Def::VER_NDX_UNKNOWN;
 			switch (section_type) {
@@ -547,8 +547,9 @@ struct ELF : public ELF_Def::Structures<C> {
 					for (size_t i = 1; i < this->_entries; i++)
 						if (this->strcmp(search_name, name(i)) == 0 && (required_version == Def::VER_NDX_UNKNOWN || required_version == version(i)))
 							return i;
+				default:
+					return Def::STN_UNDEF;
 			}
-			return Def::STN_UNDEF;
 		}
 
 		/*! \brief Find symbol
@@ -558,7 +559,7 @@ struct ELF : public ELF_Def::Structures<C> {
 		 * \param required_version required version or VER_NDX_UNKNOWN if none
 		 * \return index of object or STN_UNDEF
 		 */
-		size_t index(const std::string & search_name, uint32_t required_version = Def::VER_NDX_UNKNOWN) const {
+		size_t index(const std::string & search_name, uint16_t required_version = Def::VER_NDX_UNKNOWN) const {
 			return index(search_name.c_str(), required_version);
 		}
 
@@ -588,7 +589,7 @@ struct ELF : public ELF_Def::Structures<C> {
 		 * \param search_name symbol name to search
 		 * \return index of object or STN_UNDEF
 		 */
-		uint32_t index_by_hash(const char *search_name, uint32_t required_version) const {
+		uint32_t index_by_hash(const char *search_name, uint16_t required_version) const {
 			const ELF_Def::Hash_header * header = reinterpret_cast<const ELF_Def::Hash_header*>(this->header);
 			const uint32_t * bucket = reinterpret_cast<const uint32_t *>(header + 1);
 			const uint32_t * chain = bucket + header->nbucket;
@@ -608,7 +609,7 @@ struct ELF : public ELF_Def::Structures<C> {
 		 * \param search_name symbol name to search
 		 * \return index of object or STN_UNDEF
 		 */
-		uint32_t index_by_gnuhash(const char *search_name, uint32_t required_version) const {
+		uint32_t index_by_gnuhash(const char *search_name, uint16_t required_version) const {
 			const ELF_Def::GnuHash_header * header = reinterpret_cast<const ELF_Def::GnuHash_header*>(this->header);
 			const elfptr_t * bloom = reinterpret_cast<const elfptr_t *>(header + 1);
 			const uint32_t * buckets = reinterpret_cast<const uint32_t *>(bloom + header->bloom_size);
