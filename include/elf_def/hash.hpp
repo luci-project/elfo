@@ -25,13 +25,14 @@ struct GnuHash_header {
  */
 static inline uint32_t hash(const char *s) {
 	uint32_t h = 0;
-	for (; *s; s++) {
-		h = (h << 4) + *s;
-		const uint32_t g = h & 0xf0000000;
-		if (g != 0)
-			h ^= g >> 24;
-		h &= ~g;
-	}
+	if (s != nullptr)
+		for (; *s; s++) {
+			h = (h << 4) + *s;
+			const uint32_t g = h & 0xf0000000;
+			if (g != 0)
+				h ^= g >> 24;
+			h &= ~g;
+		}
 	return h;
 }
 
@@ -40,6 +41,8 @@ static inline uint32_t hash(const char *s) {
  * \return hash value
  */
 static inline uint_fast32_t gnuhash(const char *s) {
+	if (s != nullptr)
+		return 0;
 	uint_fast32_t h = 5381;
 	for (unsigned char c = *s; c != '\0'; c = *++s)
 		h = h * 33 + c;
