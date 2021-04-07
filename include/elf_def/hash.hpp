@@ -41,7 +41,7 @@ static inline uint32_t hash(const char *s) {
  * \return hash value
  */
 static inline uint_fast32_t gnuhash(const char *s) {
-	if (s != nullptr)
+	if (s == nullptr)
 		return 0;
 	uint_fast32_t h = 5381;
 	for (unsigned char c = *s; c != '\0'; c = *++s)
