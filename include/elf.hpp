@@ -102,6 +102,13 @@ struct ELF : public ELF_Def::Structures<C> {
 			return ret;
 		}
 
+		/*! \brief Get accessor template
+		 * \return reference to current accessor
+		 */
+		const A & accessor() const {
+			return _accessor;
+		}
+
 		/*! \brief Get address of first element
 		 * \return Memory address of first element
 		 */
@@ -213,6 +220,13 @@ struct ELF : public ELF_Def::Structures<C> {
 				if (idx-- == 0)
 					return entry;
 			assert(false);
+			return _accessor;
+		}
+
+		/*! \brief Get accessor template
+		 * \return reference to current accessor
+		 */
+		const A & accessor() const {
 			return _accessor;
 		}
 
@@ -651,19 +665,8 @@ struct ELF : public ELF_Def::Structures<C> {
 		}
 	};
 
-	/*! \brief Interface for a relocation entry */
-	struct Relocation {
-		virtual bool valid() const = 0;
-		virtual uintptr_t offset() const = 0;
-		virtual uintptr_t info() const = 0;
-		virtual Symbol symbol() const = 0;
-		virtual uint32_t symbol_index() const = 0;
-		virtual uint32_t type() const = 0;
-		virtual uintptr_t addend() const = 0;
-	};
-
 	/*! \brief Relocation entry without addend */
-	struct RelocationWithoutAddend : Relocation, Accessor<typename Def::Rel> {
+	struct Relocation : Accessor<typename Def::Rel> {
 		/*! \brief Corresponding symbol table index */
 		const uint16_t symtab;
 
@@ -671,46 +674,46 @@ struct ELF : public ELF_Def::Structures<C> {
 		 * \param elf ELF object to which this relocation belongs to
 		 * \param symtab Symbol table index for this relocation
 		 */
-		explicit RelocationWithoutAddend(const ELF<C> & elf, uint16_t symtab = 0) : Accessor<typename Def::Rel>(elf), symtab(symtab) {}
+		explicit Relocation(const ELF<C> & elf, uint16_t symtab = 0) : Accessor<typename Def::Rel>(elf), symtab(symtab) {}
 
 		/*! \brief Valid relocation */
-		bool valid() const override {
+		bool valid() const {
 			return symtab != 0;
 		}
 
 		/*! \brief Address */
-		uintptr_t offset() const override {
+		uintptr_t offset() const {
 			return this->_data->r_offset;
 		}
 
 		/*! \brief Relocation type and symbol index */
-		uintptr_t info() const override {
+		uintptr_t info() const {
 			return this->_data->r_info.value;
 		}
 
 		/*! \brief Target symbol */
-		Symbol symbol() const override {
+		Symbol symbol() const {
 			return this->_elf.symbol(symtab, this->_data->r_info.sym);
 		}
 
 		/*! \brief Index of target symbol in corresponding symbol table */
-		uint32_t symbol_index() const override {
+		uint32_t symbol_index() const {
 			return this->_data->r_info.sym;
 		}
 
 		/*! \brief Relocation type (depends on architecture) */
-		uint32_t type() const override {
+		uint32_t type() const {
 			return static_cast<uint32_t>(this->_data->r_info.type);
 		}
 
 		/*! \brief Addend (which is always zero for this relocation type) */
-		uintptr_t addend() const override {
+		intptr_t addend() const {
 			return 0;
 		}
 	};
 
 	/*! \brief Relocation entry with addend */
-	struct RelocationWithAddend : Relocation, Accessor<typename Def::Rela> {
+	struct RelocationWithAddend : Accessor<typename Def::Rela> {
 		/*! \brief Corresponding symbol table index */
 		const uint16_t symtab;
 
@@ -721,37 +724,37 @@ struct ELF : public ELF_Def::Structures<C> {
 		explicit RelocationWithAddend(const ELF<C> & elf, uint16_t symtab = 0) : Accessor<typename Def::Rela>(elf), symtab(symtab) {}
 
 		/*! \brief Valid relocation */
-		bool valid() const override {
+		bool valid() const {
 			return symtab != 0;
 		}
 
 		/*! \brief Address */
-		uintptr_t offset() const override {
+		uintptr_t offset() const {
 			return this->_data->r_offset;
 		}
 
 		/*! \brief Relocation type and symbol index */
-		uintptr_t info() const override {
+		uintptr_t info() const {
 			return this->_data->r_info.value;
 		}
 
 		/*! \brief Target symbol */
-		Symbol symbol() const override {
+		Symbol symbol() const {
 			return this->_elf.symbol(symtab, this->_data->r_info.sym);
 		}
 
 		/*! \brief Index of target symbol in corresponding symbol table */
-		uint32_t symbol_index() const override {
+		uint32_t symbol_index() const {
 			return this->_data->r_info.sym;
 		}
 
 		/*! \brief Relocation type (depends on architecture) */
-		uint32_t type() const override {
+		uint32_t type() const {
 			return static_cast<uint32_t>(this->_data->r_info.type);
 		}
 
 		/*! \brief Addend */
-		uintptr_t addend() const override {
+		intptr_t addend() const {
 			return this->_data->r_addend;
 		}
 	};

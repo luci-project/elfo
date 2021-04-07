@@ -11,6 +11,7 @@ namespace ELF_Def {
 template<ELFCLASS C>
 struct Structures : public Identification, public Constants, public Types<C> {
 	using elfptr_t = typename Structures::Elf_Addr;
+	using elfrel_t = typename Structures::Elf_Rel;
 	using elfoff_t = typename Structures::Elf_Off;
 
 	/*! \brief ELF file header */
@@ -122,13 +123,13 @@ struct Structures : public Identification, public Constants, public Types<C> {
 	struct Rela {
 		elfptr_t r_offset;
 		Rel_info r_info;
-		elfptr_t r_addend;
+		elfrel_t r_addend;
 	} __attribute__((packed));
 
 
 	/*! \brief Dyanamic */
 	struct Dyn {
-		elfptr_t d_tag;
+		elfrel_t d_tag;
 		union {
 			elfptr_t d_val;
 			elfptr_t d_ptr;

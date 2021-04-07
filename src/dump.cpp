@@ -309,13 +309,20 @@ class Dump {
 					cout << HEXPAD(16) << type << "     ";
 			}
 			auto sym = rel.symbol();
+			auto addend = rel.addend();
 			if (sym.valid()) {
 				cout << " " << HEXPAD(16) << sym.value()
-				     << " " << sym.name() << " + ";
+				     << " " << sym.name();
+				if (addend >= 0) {
+					cout << " + ";
+				} else {
+					cout << " - ";
+					addend *= -1;
+				}
 			} else {
 				cout << "                    ";
 			}
-			cout << DEC() << rel.addend() << endl;
+			cout << DEC() << addend << endl;
 		}
 		cout << RESET() << endl;
 	}
@@ -444,7 +451,7 @@ class Dump {
 		for (auto & section: elf.sections)
 			switch(section.type()) {
 				case ELF<C>::SHT_REL:
-					relocations<typename ELF<C>::RelocationWithoutAddend>(section);
+					relocations<typename ELF<C>::Relocation>(section);
 					break;
 				case ELF<C>::SHT_RELA:
 					relocations<typename ELF<C>::RelocationWithAddend>(section);

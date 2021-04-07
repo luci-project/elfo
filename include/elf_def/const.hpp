@@ -411,15 +411,20 @@ struct Constants {
 		R_X86_64_GOTPC64          = 29,
 		R_X86_64_GOTPLT64         = 30,
 		R_X86_64_PLTOFF64         = 31,
+		R_X86_64_SIZE32           = 32,
+		R_X86_64_SIZE64           = 33,
 		R_X86_64_GOTPC32_TLSDESC  = 34,
 		R_X86_64_TLSDESC_CALL     = 35,
 		R_X86_64_TLSDESC          = 36,
 		R_X86_64_IRELATIVE        = 37,
+		R_X86_64_RELATIVE64       = 38,
+		R_X86_64_GOTPCRELX        = 41,
+		R_X86_64_REX_GOTPCRELX    = 42,
 		R_X86_64_GNU_VTINHERIT    = 250,
 		R_X86_64_GNU_VTENTRY      = 251,
 	};
 
-	enum dyn_tag {
+	enum dyn_tag : int32_t {
 		DT_NULL             = 0,   ///< Marks end of dynamic section
 		DT_NEEDED           = 1,   ///< Name of needed library
 		DT_PLTRELSZ         = 2,   ///< Size in bytes of PLT reloc
