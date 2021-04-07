@@ -104,7 +104,7 @@ class ELF_Dyn : public ELF<C> {
 
 	uint16_t version_index(std::string name) const {
 		auto index = version_name_to_idx.find(name);
-		return index == version_name_to_idx.end() ? Def::VER_NDX_UNKNOWN : index->second;
+		return index == version_name_to_idx.end() ? Def::VER_NDX_GLOBAL : index->second;
 	}
 
 	std::string version_name(uint16_t index) const {
@@ -115,8 +115,6 @@ class ELF_Dyn : public ELF<C> {
 				return "*global*";
 			case Def::VER_NDX_ELIMINATE:
 				return "*eliminate*";
-			case Def::VER_NDX_UNKNOWN:
-				return "*unknown*";
 		}
 		auto name = version_idx_to_name.find(index);
 		return name == version_idx_to_name.end() ? "*invalid*" : name->second;

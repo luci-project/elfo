@@ -92,11 +92,11 @@ bool elflookup(void * addr, size_t length, const std::vector<const char*> & symb
 			auto split = symstr.find_last_of('@');
 			std::string name = symstr.substr(0, split);
 
-			uint32_t version = ELF_Dyn<C>::VER_NDX_UNKNOWN;
+			uint32_t version = ELF_Dyn<C>::VER_NDX_GLOBAL;
 			if (split != symstr.npos) {
 				std::string version_name = symstr.substr(split + 1);
 				version = elf.version_index(version_name);
-				if (version == ELF_Dyn<C>::VER_NDX_UNKNOWN) {
+				if (version == ELF_Dyn<C>::VER_NDX_GLOBAL) {
 					std::cerr << "Unknown version '" << version_name << "' for symbol '" << sym << "' -- skipping!" << std::endl;
 					success = false;
 					continue;

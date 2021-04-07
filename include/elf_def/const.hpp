@@ -632,7 +632,6 @@ struct Constants {
 		VER_NDX_GLOBAL    = 1,       ///< Symbol is global
 		VER_NDX_LORESERVE = 0xff00,  ///< Beginning of reserved entries
 		VER_NDX_ELIMINATE = 0xff01,  ///< Symbol is to be eliminated
-		VER_NDX_UNKNOWN   = 0xffff,  ///< No Symbol version (custom)
 	};
 
 	// version revision

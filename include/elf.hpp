@@ -535,22 +535,22 @@ struct ELF : public ELF_Def::Structures<C> {
 
 		/*! \brief Get symbol version index by symbol index
 		 * \param idx symbol index
-		 * \return Symbol version or VER_NDX_UNKNOWN if none
+		 * \return Symbol version or VER_NDX_GLOBAL if none
 		 */
 		inline const uint16_t version(uint32_t idx) const{
-			return versions == nullptr ? Def::VER_NDX_UNKNOWN : versions[idx];
+			return versions == nullptr ? Def::VER_NDX_GLOBAL : versions[idx];
 		}
 
 		/*! \brief Find symbol
 		 * use hash if available
 		 * \note Undefined symbols are usually excluded from hash hence they might not be found using this method!
 		 * \param search_name symbol name to search
-		 * \param required_version required version or VER_NDX_UNKNOWN if none
+		 * \param required_version required version or VER_NDX_GLOBAL if none
 		 * \return index of object or STN_UNDEF
 		 */
-		size_t index(const char * search_name, uint16_t required_version = Def::VER_NDX_UNKNOWN) const {
-			if (required_version != Def::VER_NDX_UNKNOWN && versions == nullptr)
-				required_version = Def::VER_NDX_UNKNOWN;
+		size_t index(const char * search_name, uint16_t required_version = Def::VER_NDX_GLOBAL) const {
+			if (required_version != Def::VER_NDX_GLOBAL && versions == nullptr)
+				required_version = Def::VER_NDX_GLOBAL;
 			switch (section_type) {
 				case Def::SHT_HASH:
 					return index_by_hash(search_name, required_version);
@@ -559,7 +559,7 @@ struct ELF : public ELF_Def::Structures<C> {
 				case Def::SHT_DYNSYM:
 				case Def::SHT_SYMTAB:
 					for (size_t i = 1; i < this->_entries; i++)
-						if (this->strcmp(search_name, name(i)) == 0 && (required_version == Def::VER_NDX_UNKNOWN || required_version == version(i)))
+						if (this->strcmp(search_name, name(i)) == 0 && (required_version == Def::VER_NDX_GLOBAL || required_version == version(i)))
 							return i;
 				default:
 					return Def::STN_UNDEF;
@@ -570,10 +570,10 @@ struct ELF : public ELF_Def::Structures<C> {
 		 * use hash if available
 		 * \note Undefined symbols are usually excluded from hash hence they might not be found using this method!
 		 * \param search_name symbol name to search
-		 * \param required_version required version or VER_NDX_UNKNOWN if none
+		 * \param required_version required version or VER_NDX_GLOBAL if none
 		 * \return index of object or STN_UNDEF
 		 */
-		size_t index(const std::string & search_name, uint16_t required_version = Def::VER_NDX_UNKNOWN) const {
+		size_t index(const std::string & search_name, uint16_t required_version = Def::VER_NDX_GLOBAL) const {
 			return index(search_name.c_str(), required_version);
 		}
 
@@ -592,7 +592,7 @@ struct ELF : public ELF_Def::Structures<C> {
 		    SymbolTable(elf, section.type(), use_hash ? section.data() : nullptr, use_hash ? elf.sections[section.link()] : section, version_section) {}
 
 		SymbolTable(const ELF<C> & elf, const typename Def::shdr_type section_type, void * header, const Section & symbol_section, const Section & version_section) :
-		    Array<Symbol>(Symbol(elf, symbol_section.link()), elf.start + symbol_section.offset(), symbol_section.size() / symbol_section.entry_size()),
+		    Array<Symbol>(Symbol(elf, symbol_section.link()), reinterpret_cast<uintptr_t>(symbol_section.data()), symbol_section.entries()),
 		    _elf(elf), section_type(section_type), header(header), versions(version_section.type() == Def::SHT_GNU_VERSYM ? version_section.get_versions() : nullptr) {
 			assert(section_type == Def::SHT_GNU_HASH || section_type == Def::SHT_HASH || section_type == Def::SHT_DYNSYM || section_type == Def::SHT_SYMTAB);
 			assert(section_type == Def::SHT_DYNSYM || section_type == Def::SHT_SYMTAB || header != nullptr);
@@ -611,7 +611,7 @@ struct ELF : public ELF_Def::Structures<C> {
 			const uint32_t h = ELF_Def::hash(search_name);
 
 			for (uint32_t i = bucket[h % (header->nbucket)]; i; i = chain[i])
-				if (!SymbolTable::strcmp(search_name, SymbolTable::name(i)) && (required_version == Def::VER_NDX_UNKNOWN || required_version == version(i)))
+				if (!SymbolTable::strcmp(search_name, SymbolTable::name(i)) && (required_version == Def::VER_NDX_GLOBAL || required_version == version(i)))
 					return i;
 
 			return Def::STN_UNDEF;
@@ -647,7 +647,7 @@ struct ELF : public ELF_Def::Structures<C> {
 
 			for (h1 &= ~1; true; n++) {
 				uint32_t h2 = *hashval++;
-				if ((h1 == (h2 & ~1)) && !SymbolTable::strcmp(search_name, SymbolTable::name(n)) && (required_version == Def::VER_NDX_UNKNOWN || required_version == version(n)))
+				if ((h1 == (h2 & ~1)) && !SymbolTable::strcmp(search_name, SymbolTable::name(n)) && (required_version == Def::VER_NDX_GLOBAL || required_version == version(n)))
 					return n;
 				if (h2 & 1)
 					break;
@@ -1306,6 +1306,20 @@ struct ELF : public ELF_Def::Structures<C> {
 				break;
 		return sections[0];
 	}
+
+	/*! \brief Get section by virtual address (offset)
+	 * \param address relative address of start of section
+	 * \return Section or pointer to NULL section if not found
+	 */
+	const Section section_by_virt_addr(uintptr_t addr) const {
+		for (auto &s : sections)
+			if (s.virt_addr() == addr)
+				return s;
+			else if (s.virt_addr() > addr)
+				break;
+		return sections[0];
+	}
+
 
 	/*! \brief Get symbol
 	 * \param section symbol table section
