@@ -291,7 +291,7 @@ class Dump {
 	void relocations(const Section & section) {
 		auto relocations = section.template get_array<RELOC>();
 		cout << "Relocation section [" << elf.sections.index(section) << "] '" << section.name() << "' at offset " << HEX() << section.offset() << " contains " << DEC() << relocations.count() << " entries:" << endl
-		     << "  Offset             Info               Type               Symbol's Value     Target (Symbol's Name + Addend)" << endl;
+		     << "  Offset             Info               Type                Symbol's Value     Target (Symbol's Name + Addend)" << endl;
 		for (auto & rel : relocations) {
 			cout << "  " << HEXPAD(16) << rel.offset()
 			     << " " << HEXPAD(16) << rel.info()
@@ -300,13 +300,13 @@ class Dump {
 			switch (elf.header.machine()) {
 				case ELF<C>::EM_386:
 				case ELF<C>::EM_486:
-					cout << PAD(18) << static_cast<typename ELF<C>::rel_386>(type);
+					cout << PAD(19) << static_cast<typename ELF<C>::rel_386>(type);
 					break;
 				case ELF<C>::EM_X86_64:
-					cout << PAD(18) << static_cast<typename ELF<C>::rel_x86_64>(type);
+					cout << PAD(19) << static_cast<typename ELF<C>::rel_x86_64>(type);
 					break;
 				default:
-					cout << HEXPAD(16) << type << "     ";
+					cout << HEXPAD(19) << type << "     ";
 			}
 			auto sym = rel.symbol();
 			auto addend = rel.addend();
@@ -331,7 +331,7 @@ class Dump {
 	void symbols(const Section & section) {
 		auto symbols = section.get_symbols();
 		cout << "Symbol table [" << elf.sections.index(section) << "] '" << section.name() << "' at offset " << HEX() << section.offset() << " contains " << DEC() << symbols.count() << " entries:" << endl
-		     << "   Num Value              Size    Type       Bind   Vis      Ndx Name" << endl;
+		     << "   Num Value              Size  Type        Bind         Vis          Ndx Name" << endl;
 		for (auto & sym: symbols) {
 			cout << " " << DECPAD(5) << symbols.index(sym)
 			     << " " << HEXPAD(16) << sym.value()
