@@ -1260,10 +1260,10 @@ struct ELF : public ELF_Def::Structures<C> {
 	}
 
 	/*! \brief get class of ELF object */
-/*	static typename Def::ident_class class() {
+	static typename Def::ident_class elfclass() {
 		return C;
 	}
-*/
+
 	/*! \brief Check if this file seems to be valid (using file size and offsets)
 	 * \param file_size Length of memory mapped file
 	 */
