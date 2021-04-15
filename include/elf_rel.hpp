@@ -199,6 +199,10 @@ struct Relocation {
 						assert(false);
 						return 0;
 				}
+
+				default: // Not recognized!
+					assert(false);
+					return 0;
 			}
 	}
 
