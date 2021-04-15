@@ -342,12 +342,12 @@ struct Relocation {
 	 * \param plt_entry PLT entry of the symbol
 	 */
 	uintptr_t relocate(uintptr_t base, const Elf::Symbol & symbol, uintptr_t symbol_base, uintptr_t global_offset_table = 0, uintptr_t plt_entry = 0) const {
-		assert(symbol.section_index() == Elf::SHN_UNDEF);
+		assert(symbol.section_index() != Elf::SHN_UNDEF);
 		return relocate_value(base, value(base, symbol, symbol_base, global_offset_table, plt_entry));
 	}
 
 	uintptr_t relocate(uintptr_t base, uintptr_t global_offset_table = 0, uintptr_t plt_entry = 0) const {
-		assert(symbol.section_index() == Elf::SHN_UNDEF);
+		assert(symbol.section_index() != Elf::SHN_UNDEF);
 		return relocate_value(base, value(base, global_offset_table, plt_entry));
 	}
 

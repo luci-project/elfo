@@ -36,9 +36,6 @@ struct ELF : public ELF_Def::Structures<C> {
 		/*! \brief Constructor */
 		explicit Accessor(const ELF<C> & elf) : _elf(elf) {}
 
-		/*! \brief Copy-constructor */
-		explicit Accessor(const Accessor<DT> & accessor) : _elf(accessor._elf), _data(accessor._data) {}
-
 		/*! \brief Elf object */
 		const ELF<C> & elf() const {
 			return _elf;
@@ -70,7 +67,7 @@ struct ELF : public ELF_Def::Structures<C> {
 	 */
 	template <typename A>
 	class Array {
-	protected:
+	 protected:
 		/*! \brief Data type of element */
 		using V = decltype(A::_data);
 
