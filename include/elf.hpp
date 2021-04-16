@@ -15,7 +15,7 @@
  * \tparam C 32- or 64-bit elf class
  */
 template<ELFCLASS C>
-struct ELF : public ELF_Def::Structures<C> {
+class ELF : public ELF_Def::Structures<C> {
 	using Def = typename ELF_Def::Structures<C>;
 	using elfptr_t = typename Def::Elf_Addr;
 
@@ -31,10 +31,10 @@ struct ELF : public ELF_Def::Structures<C> {
 		const ELF<C> & _elf;
 
 		/*! \brief Pointer to payload */
-		const DT * _data = nullptr;
+		const DT * _data;
 
 		/*! \brief Constructor */
-		explicit Accessor(const ELF<C> & elf) : _elf(elf) {}
+		explicit Accessor(const ELF<C> & elf, const DT * data = nullptr) : _elf(elf), _data(data) {}
 
 		/*! \brief Elf object */
 		const ELF<C> & elf() const {
@@ -60,45 +60,75 @@ struct ELF : public ELF_Def::Structures<C> {
 		bool operator!=(const Accessor<DT> & o) const {
 			return _data != o._data;
 		}
+
+		/*! \brief Pointer to next element */
+		const DT * next(size_t i = 1) const {
+			return _data + i;
+		}
 	};
 
-	/*! \brief Array-like access to data with fixed element size using accessor
-	 * \tparam A class
-	 */
+	/*! \brief Iterator */
 	template <typename A>
-	class Array {
+	class Iterator {
+		/*! \brief Accessor Template for elements */
+		A accessor;
+
+	 public:
+		/*! \brief Iterator constructor
+		 * \param p pointer to current element
+		 * \param a accessor template
+		 */
+		Iterator(const A & accessor) : accessor(accessor) {}
+
+		/*! \brief Next element
+		 * \note Element must provide a `next` method!
+		 */
+		Iterator operator++() {
+			assert(accessor._data != accessor.next());
+			accessor._data = accessor.next();
+			return *this;
+		}
+
+		/*! \brief Compare current iterator element */
+		bool operator!=(const Iterator & other) const {
+			return accessor._data != other.accessor._data;
+		}
+
+		/*! \brief Get current element */
+		const A operator*() const {
+			return accessor;
+		}
+	};
+
+
+	template <typename A>
+	class Accessors {
 	 protected:
 		/*! \brief Data type of element */
 		using V = decltype(A::_data);
 
-		/*! \brief Accessor template for each element */
+		/*! \brief Accessor template with pointer to first element */
 		const A _accessor;
 
-		/*! \brief Pointer to first element */
-		V const _values;
+		/*! \brief Pointer to last element */
+		const V _end;
 
-		/*! \brief Pointer to first element */
-		const size_t _entries;
-
-	 public:
-		/*! \brief Construct new Array access
-		 * \param accessor \ref Accessor template
-		 * \param ptr Pointer to first element
-		 * \param entries number of elements
-		 */
-		Array(const A & accessor, uintptr_t ptr, size_t entries) : _accessor(accessor), _values(reinterpret_cast<V const>(ptr)), _entries(entries) {}
-
-		/*! \brief Array-like access
-		 * \param idx index
-		 * \return Accessor for element
-		 */
-		A operator[](size_t idx) const {
-			assert(idx < _entries);
-			A ret = _accessor;
-			ret._data = _values + idx;
-			return ret;
+		/*! \brief Create new accessor pointing to specific element */
+		static A _accessor_value(const A & accessor, V ptr) {
+			A a = accessor;
+			a._data = ptr;
+			return a;
 		}
 
+		static A _accessor_value(const A & accessor, uintptr_t ptr) {
+			return _accessor_value(accessor, reinterpret_cast<V>(ptr));
+		}
+
+		Accessors(const A & accessor, V end) : _accessor(accessor), _end(end) {}
+
+		Accessors(const A & accessor, size_t entries) : _accessor(accessor), _end(_accessor.next(entries)) {}
+
+	 public:
 		/*! \brief Get accessor template
 		 * \return reference to current accessor
 		 */
@@ -110,20 +140,54 @@ struct ELF : public ELF_Def::Structures<C> {
 		 * \return Memory address of first element
 		 */
 		uintptr_t address() const {
-			return reinterpret_cast<uintptr_t>(_values);
+			return reinterpret_cast<uintptr_t>(_accessor._data);
+		}
+
+		/*! \brief Get Iterator for first element */
+		Iterator<A> begin() const {
+			return Iterator<A>(_accessor);
+		}
+
+		/*! \brief Get Iterator identicating end of list */
+		Iterator<A> end() const {
+			return Iterator<A>(_accessor_value(_accessor, _end));
+		}
+	};
+
+ public:
+	/*! \brief Array-like access to data with fixed element size using accessor
+	 * \tparam A class
+	 */
+	template <typename A>
+	class Array : public Accessors<A> {
+	 public:
+		/*! \brief Construct new Array access
+		 * \param accessor \ref Accessor template
+		 * \param ptr Pointer to first element
+		 * \param entries number of elements
+		 */
+		Array(const A & accessor, uintptr_t ptr, size_t entries) : Accessors<A>(this->_accessor_value(accessor, ptr), entries) { }
+
+		/*! \brief Array-like access
+		 * \param idx index
+		 * \return Accessor for element
+		 */
+		A operator[](size_t idx) const {
+			assert(this->_accessor.next(idx) < this->_end);
+			return this->_accessor_value(this->_accessor, this->_accessor.next(idx));
 		}
 
 		/*! \brief Number of elements in array
 		 */
 		size_t count() const {
-			return _entries;
+			return (reinterpret_cast<size_t>(this->_end) - reinterpret_cast<size_t>(this->_accessor._data)) / sizeof(*(this->_accessor._data));
 		}
 
 		/*! \brief Are there any elements in the array?
 		 * \return `true` if there is at least one element
 		 */
 		bool empty() const {
-			return _entries == 0;
+			return this->_accessor._data == this->_end;
 		}
 
 		/*! \brief Get index of element
@@ -132,51 +196,7 @@ struct ELF : public ELF_Def::Structures<C> {
 		 * \return index
 		 */
 		size_t index(const A & element) const {
-			return (reinterpret_cast<size_t>(element._data) - reinterpret_cast<size_t>(_values)) / sizeof(*element._data);
-		}
-
-		/*! \brief Iterator */
-		class Iterator {
-			/*! \brief Pointer to current element */
-			V p;
-
-			/*! \brief Accessor Template for elements */
-			const A & a;
-
-		 public:
-			/*! \brief Iterator constructor
-			 * \param p pointer to current element
-			 * \param a accessor template
-			 */
-			Iterator(const V & p, const A & a): p(p), a(a){}
-
-			/*! \brief Next element */
-			Iterator operator++() {
-				++p;
-				return *this;
-			}
-
-			/*! \brief Compare current iterator element */
-			bool operator!=(const Iterator & o) const {
-				return p != o.p;
-			}
-
-			/*! \brief Get current element */
-			const A operator*() const {
-				A ret = a;
-				ret._data = p;
-				return ret;
-			}
-		};
-
-		/*! \brief Get Iterator for first element */
-		Iterator begin() const {
-			return Iterator(_values, _accessor);
-		}
-
-		/*! \brief Get Iterator for last element */
-		Iterator end() const {
-			return Iterator(_values + _entries, _accessor);
+			return (reinterpret_cast<size_t>(element._data) - reinterpret_cast<size_t>(this->_accessor._data)) / sizeof(*(this->_accessor._data));
 		}
 	};
 
@@ -184,28 +204,15 @@ struct ELF : public ELF_Def::Structures<C> {
 	 * \tparam A class
 	 */
 	template <typename A>
-	class List {
-		/*! \brief Data type of element */
-		using V = decltype(A::_data);
-
-		/*! \brief Accessor template for each element */
-		const A _accessor;
-
-		/*! \brief Pointer to first element of the list*/
-		const V _begin;
-
-		/*! \brief Pointer to the indicator of the end of the list
-		 * \note `nullptr` can be valid
-		 */
-		const V _end;
-
+	class List : public Accessors<A> {
+		using V = typename Accessors<A>::V;
 	 public:
 		/*! \brief Construct new List access
 		 * \param accessor \ref Accessor template
 		 * \param begin Pointer to first element
 		 * \param end Indicator for end of list
 		 */
-		List(const A & accessor, const V begin, const V end) : _accessor(accessor), _begin(begin), _end(end) {}
+		List(const A & accessor, const V begin, const V end) : Accessors<A>(this->_accessor_value(accessor, begin), end) {}
 
 		/*! \brief Array-like access
 		 * \note O(n) complexity!
@@ -217,21 +224,7 @@ struct ELF : public ELF_Def::Structures<C> {
 				if (idx-- == 0)
 					return entry;
 			assert(false);
-			return _accessor;
-		}
-
-		/*! \brief Get accessor template
-		 * \return reference to current accessor
-		 */
-		const A & accessor() const {
-			return _accessor;
-		}
-
-		/*! \brief Get address of first element
-		 * \return Memory address of first element
-		 */
-		uintptr_t address() const {
-			return reinterpret_cast<uintptr_t>(_begin);
+			return this->_accessor;
 		}
 
 		/*! \brief Number of elements in array
@@ -251,50 +244,6 @@ struct ELF : public ELF_Def::Structures<C> {
 			for (auto & entry : *this)
 				return true;
 			return false;
-		}
-
-		/*! \brief Iterator */
-		class Iterator {
-			/*! \brief Accessor Template for elements */
-			A a;
-
-		 public:
-			/*! \brief Iterator constructor
-			 * \param p pointer to current element
-			 * \param a accessor template
-			 */
-			Iterator(const A & a, const V ptr) : a(a) {
-				this->a._data = ptr;
-			}
-
-			/*! \brief Next element
-			 * \note Element must provide a `next` method!
-			 */
-			Iterator operator++() {
-				assert(a._data != a.next());
-				a._data = a.next();
-				return *this;
-			}
-
-			/*! \brief Compare current iterator element */
-			bool operator!=(const Iterator & o) const {
-				return a._data != o.a._data;
-			}
-
-			/*! \brief Get current element */
-			const A operator*() const {
-				return a;
-			}
-		};
-
-		/*! \brief Get Iterator for first element */
-		Iterator begin() const {
-			return Iterator(_accessor, _begin);
-		}
-
-		/*! \brief Get Iterator identicating end of list */
-		Iterator end() const {
-			return Iterator(_accessor, _end);
 		}
 	};
 
@@ -527,7 +476,7 @@ struct ELF : public ELF_Def::Structures<C> {
 
 		/*! \brief Get symbol name by index */
 		inline const char * name(uint32_t idx) const {
-			return idx == Def::STN_UNDEF ? nullptr : _elf.string(this->_accessor.strtab, this->_values[idx].st_name);
+			return idx == Def::STN_UNDEF ? nullptr : _elf.string(this->_accessor.strtab, this->_accessor._data[idx].st_name);
 		}
 
 		/*! \brief Get symbol version index by symbol index
@@ -555,9 +504,12 @@ struct ELF : public ELF_Def::Structures<C> {
 					return index_by_gnuhash(search_name, required_version);
 				case Def::SHT_DYNSYM:
 				case Def::SHT_SYMTAB:
-					for (size_t i = 1; i < this->_entries; i++)
+				{
+					const auto entries = this->count();
+					for (size_t i = 1; i < entries; i++)
 						if (this->strcmp(search_name, name(i)) == 0 && (required_version == Def::VER_NDX_GLOBAL || required_version == version(i)))
 							return i;
+				}
 				default:
 					return Def::STN_UNDEF;
 			}
@@ -667,7 +619,7 @@ struct ELF : public ELF_Def::Structures<C> {
 	};
 
 	/*! \brief Relocation entry without addend */
-	struct Relocation : Accessor<typename Def::Rel> {
+	struct RelocationWithoutAddend : Accessor<typename Def::Rel> {
 		/*! \brief Corresponding symbol table index */
 		const uint16_t symtab;
 
@@ -675,7 +627,7 @@ struct ELF : public ELF_Def::Structures<C> {
 		 * \param elf ELF object to which this relocation belongs to
 		 * \param symtab Symbol table index for this relocation
 		 */
-		explicit Relocation(const ELF<C> & elf, uint16_t symtab = 0) : Accessor<typename Def::Rel>(elf), symtab(symtab) {}
+		explicit RelocationWithoutAddend(const ELF<C> & elf, uint16_t symtab = 0) : Accessor<typename Def::Rel>(elf), symtab(symtab) {}
 
 		/*! \brief Valid relocation */
 		bool valid() const {
@@ -760,6 +712,81 @@ struct ELF : public ELF_Def::Structures<C> {
 		}
 	};
 
+#if 0
+	/*! \brief Wrapper for both relocation types with generic Interface */
+	struct Relocation {
+		/*! \brief Corresponding symbol table index */
+		union {
+			const Elf::RelocationWithoutAddend rel;
+			const Elf::RelocationWithAddend rela;
+		};
+
+		bool hasAddend;
+
+		/*! \brief Construct relocation entry
+		 * \param symtab Symbol table index for this relocation
+		 */
+		explicit Relocation(const Elf::RelocationWithoutAddend & rel) : rel(rel), hasAddend(false) {}
+		explicit Relocation(const Elf::RelocationWithAddend & rela) : rela(rela), hasAddend(false) {}
+
+		/*! \brief Valid relocation */
+		bool valid() const {
+			return hasAddend ? rela.valid() : rel.valid();
+		}
+
+		/*! \brief Target symbol */
+		Symbol symbol() const {
+			return hasAddend ? rela.symbol() : rel.symbol();
+		}
+
+		/*! \brief Relocation type and symbol index */
+		uintptr_t info() const {
+			return hasAddend ? rela.info() : rel.info();
+		}
+
+		/*! \brief Target symbol */
+		Symbol symbol() const {
+			return hasAddend ? rela.symbol() : rel.symbol();
+		}
+
+		/*! \brief Index of target symbol in corresponding symbol table */
+		uint32_t symbol_index() const {
+			return hasAddend ? rela.symbol_index() : rel.symbol_index();
+		}
+
+		/*! \brief Relocation type (depends on architecture) */
+		uint32_t type() const {
+			return hasAddend ? rela.type() : rel.type();
+		}
+
+		/*! \brief Addend */
+		intptr_t addend() const {
+			return hasAddend ? rela.addend() : rel.addend();
+		}
+	};
+
+	struct RelocationArray {
+		union {
+			const Array<Relocation> rel;
+			const Array<RelocationWithAddend> rela;
+		};
+
+		bool hasAddend;
+
+		Relocation operator[](size_t idx) const {
+			return hasAddend ? Relocation(rela[idx]) : Relocation(rel[idx]);
+		}
+
+			/*! \brief Get accessor template
+			 * \return reference to current accessor
+			 */
+			const A & accessor() const {
+				return _accessor;
+			}
+	};
+
+#endif
+
 	/*! \brief Dynamic table entry */
 	struct Dynamic : Accessor<typename Def::Dyn> {
 		/*! \brief Index of string table */
@@ -827,6 +854,7 @@ struct ELF : public ELF_Def::Structures<C> {
 
 	 private:
 		friend class List<Note>;
+		friend class Iterator<Note>;
 
 		/*! \brief Next element
 		 * \return pointer to next element
@@ -866,6 +894,7 @@ struct ELF : public ELF_Def::Structures<C> {
 
 		 private:
 			friend class List<VersionDefinition::Auxiliary>;
+			friend class Iterator<VersionDefinition::Auxiliary>;
 
 			/*! \brief Next element
 			 * \return pointer to next element or `nullptr` if end
@@ -876,6 +905,7 @@ struct ELF : public ELF_Def::Structures<C> {
 		};
 
 		friend class List<VersionDefinition>;
+		friend class Iterator<VersionDefinition>;
 
 		/*! \brief Next element
 		 * \return pointer to next element or `nullptr` if end
@@ -979,6 +1009,7 @@ struct ELF : public ELF_Def::Structures<C> {
 
 		 private:
 			friend class List<VersionNeeded::Auxiliary>;
+			friend class Iterator<VersionNeeded::Auxiliary>;
 
 			/*! \brief Next element
 			 * \return pointer to next element or `nullptr` if end
@@ -989,6 +1020,7 @@ struct ELF : public ELF_Def::Structures<C> {
 		};
 
 		friend class List<VersionNeeded>;
+		friend class Iterator<VersionNeeded>;
 
 		/*! \brief Next element
 		 * \return pointer to next element or `nullptr` if end

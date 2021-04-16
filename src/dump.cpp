@@ -451,7 +451,7 @@ class Dump {
 		for (auto & section: elf.sections)
 			switch(section.type()) {
 				case ELF<C>::SHT_REL:
-					relocations<typename ELF<C>::Relocation>(section);
+					relocations<typename ELF<C>::RelocationWithoutAddend>(section);
 					break;
 				case ELF<C>::SHT_RELA:
 					relocations<typename ELF<C>::RelocationWithAddend>(section);

@@ -18,8 +18,8 @@ class ELF_Dyn : public ELF<C> {
 	using SymbolTable = typename ELF<C>::SymbolTable;
 	using VersionNeeded = typename ELF<C>::VersionNeeded;
 	using VersionDefinition = typename ELF<C>::VersionDefinition;
-	using Relocation = typename ELF<C>::Relocation;
 	using RelocationWithAddend = typename ELF<C>::RelocationWithAddend;
+	using RelocationWithoutAddend = typename ELF<C>::RelocationWithoutAddend;
 
  private:
 	using Def = typename ELF_Def::Structures<C>;
@@ -72,8 +72,8 @@ class ELF_Dyn : public ELF<C> {
 	SymbolTable symbols;
 	List<VersionNeeded> version_needed;
 	List<VersionDefinition> version_definition;
-	Array<Relocation> relocations;
 	Array<RelocationWithAddend> relocations_addend;
+	Array<RelocationWithoutAddend> relocations;
 
 	ELF_Dyn(uintptr_t start)
 	  : ELF<C>(start),
@@ -81,7 +81,7 @@ class ELF_Dyn : public ELF<C> {
 	    symbols(find_dynamic_symbol_table()),
 	    version_needed(get_dynamic_section(Def::DT_VERNEED).template get_list<VersionNeeded>(true)),
 	    version_definition(get_dynamic_section(Def::DT_VERDEF).template get_list<VersionDefinition>(true)),
-	    relocations(get_dynamic_section(Def::DT_REL).template get_array<Relocation>()),
+	    relocations(get_dynamic_section(Def::DT_REL).template get_array<RelocationWithoutAddend>()),
 	    relocations_addend(get_dynamic_section(Def::DT_RELA).template get_array<RelocationWithAddend>()) {
 
 		for (auto & v : version_needed)

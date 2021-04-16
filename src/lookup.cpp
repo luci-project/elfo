@@ -62,7 +62,7 @@ void elfsymbol(const ELF_Dyn<C> & elf, const typename ELF_Dyn<C>::Symbol & sym) 
 	std::cout << std::endl
 	          << "    Version: " << version << " (" << elf.version_name(version) << ")" << std::endl;
 
-	elfreloc<C, typename ELF_Dyn<C>::Relocation>(elf, sym, elf.relocations);
+	elfreloc<C, typename ELF_Dyn<C>::RelocationWithoutAddend>(elf, sym, elf.relocations);
 	elfreloc<C, typename ELF_Dyn<C>::RelocationWithAddend>(elf, sym, elf.relocations_addend);
 
 	std::cout << std::endl;
