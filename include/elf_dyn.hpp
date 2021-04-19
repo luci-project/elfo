@@ -15,11 +15,10 @@ class ELF_Dyn : public ELF<C> {
 	using List = typename ELF<C>::template List<T>;
 	using Section = typename ELF<C>::Section;
 	using Dynamic = typename ELF<C>::Dynamic;
+	using Relocation = typename ELF<C>::Relocation;
 	using SymbolTable = typename ELF<C>::SymbolTable;
 	using VersionNeeded = typename ELF<C>::VersionNeeded;
 	using VersionDefinition = typename ELF<C>::VersionDefinition;
-	using RelocationWithAddend = typename ELF<C>::RelocationWithAddend;
-	using RelocationWithoutAddend = typename ELF<C>::RelocationWithoutAddend;
 
  private:
 	using Def = typename ELF_Def::Structures<C>;
@@ -67,22 +66,49 @@ class ELF_Dyn : public ELF<C> {
 		return SymbolTable(*this);
 	}
 
+	/*! \brief Find relocation table
+	 * \return Relocation Table
+	 */
+	Array<Relocation> find_dynamic_relocations() const {
+		uintptr_t jmprel = 0;  // Address of PLT relocation table
+		uintptr_t pltrel = Elf::DT_NULL;  // Type of PLT relocation table (REL or RELA)
+		size_t pltrelsz = 0;   // Size of PLT relocation table (and, hence, GOT)
+
+		for (auto &dyn: dynamic) {
+			switch (dyn.tag()) {
+				case Elf::DT_JMPREL:
+					jmprel = dyn.value();
+					break;
+				case Elf::DT_PLTREL:
+					pltrel = dyn.value();
+					break;
+				case Elf::DT_PLTRELSZ:
+					pltrelsz = dyn.value();
+					break;
+				default:
+					continue;
+			}
+		}
+
+		auto section = this->section_by_offset(jmprel);
+		assert(jmprel == 0 || section.size() == pltrelsz);
+		return section.get_relocations();
+	}
+
  public:
 	Array<Dynamic> dynamic;
 	SymbolTable symbols;
+	Array<Relocation> relocations;
 	List<VersionNeeded> version_needed;
 	List<VersionDefinition> version_definition;
-	Array<RelocationWithAddend> relocations_addend;
-	Array<RelocationWithoutAddend> relocations;
 
 	ELF_Dyn(uintptr_t start)
 	  : ELF<C>(start),
 	    dynamic(find_dynamic()),
 	    symbols(find_dynamic_symbol_table()),
+	    relocations(find_dynamic_relocations()),
 	    version_needed(get_dynamic_section(Def::DT_VERNEED).template get_list<VersionNeeded>(true)),
-	    version_definition(get_dynamic_section(Def::DT_VERDEF).template get_list<VersionDefinition>(true)),
-	    relocations(get_dynamic_section(Def::DT_REL).template get_array<RelocationWithoutAddend>()),
-	    relocations_addend(get_dynamic_section(Def::DT_RELA).template get_array<RelocationWithAddend>()) {
+	    version_definition(get_dynamic_section(Def::DT_VERDEF).template get_list<VersionDefinition>(true)) {
 
 		for (auto & v : version_needed)
 			for (auto & aux : v.auxiliary()) {

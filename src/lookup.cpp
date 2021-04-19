@@ -9,36 +9,12 @@
 #include <iostream>
 #include <iomanip>
 
-
 #include <vector>
 
 #include "elf_dyn.hpp"
 
 #include "_str_const.hpp"
 #include "_str_ident.hpp"
-
-template <ELFCLASS C, class RELOC>
-void elfreloc(const ELF_Dyn<C> & elf, const typename ELF_Dyn<C>::Symbol & sym, const typename ELF_Dyn<C>::template Array<RELOC> & relocations) {
-	for (auto & rel : relocations)
-		if (rel.symbol() == sym) {
-			std::cout << " Relocation: Offset 0x" << std::hex << rel.offset() << std::endl
-			          << "             Type ";
-			auto type = rel.type();
-			switch (elf.header.machine()) {
-				case ELF<C>::EM_386:
-				case ELF<C>::EM_486:
-					std::cout << static_cast<typename ELF<C>::rel_386>(type);
-					break;
-				case ELF<C>::EM_X86_64:
-					std::cout << static_cast<typename ELF<C>::rel_x86_64>(type);
-					break;
-				default:
-					std::cout << std::hex << type;
-			}
-			std::cout << std::endl
-			          << "             Addend " << std::dec << rel.addend() << std::endl;
-		}
-}
 
 template<ELFCLASS C>
 void elfsymbol(const ELF_Dyn<C> & elf, const typename ELF_Dyn<C>::Symbol & sym) {
@@ -62,8 +38,25 @@ void elfsymbol(const ELF_Dyn<C> & elf, const typename ELF_Dyn<C>::Symbol & sym) 
 	std::cout << std::endl
 	          << "    Version: " << version << " (" << elf.version_name(version) << ")" << std::endl;
 
-	elfreloc<C, typename ELF_Dyn<C>::RelocationWithoutAddend>(elf, sym, elf.relocations);
-	elfreloc<C, typename ELF_Dyn<C>::RelocationWithAddend>(elf, sym, elf.relocations_addend);
+	for (auto & rel : elf.relocations)
+		if (rel.symbol() == sym) {
+			std::cout << " Relocation: Offset 0x" << std::hex << rel.offset() << std::endl
+			          << "             Type ";
+			auto type = rel.type();
+			switch (elf.header.machine()) {
+				case ELF<C>::EM_386:
+				case ELF<C>::EM_486:
+					std::cout << static_cast<typename ELF<C>::rel_386>(type);
+					break;
+				case ELF<C>::EM_X86_64:
+					std::cout << static_cast<typename ELF<C>::rel_x86_64>(type);
+					break;
+				default:
+					std::cout << std::hex << type;
+			}
+			std::cout << std::endl
+			          << "             Addend " << std::dec << rel.addend() << std::endl;
+		}
 
 	std::cout << std::endl;
 }

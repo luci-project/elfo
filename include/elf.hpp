@@ -374,6 +374,7 @@ class ELF : public ELF_Def::Structures<C> {
 		}
 	};
 
+	/*! \brief Forward declaration for Section */
 	struct Section;
 
 	/*! \brief Symbol */
@@ -537,9 +538,11 @@ class ELF : public ELF_Def::Structures<C> {
 		}
 
 	 private:
+		/*! \brief Helper constructor */
 		SymbolTable(const ELF<C> & elf, bool use_hash, const Section & section, const Section & version_section) :
 		    SymbolTable(elf, section.type(), use_hash ? section.data() : nullptr, use_hash ? elf.sections[section.link()] : section, version_section) {}
 
+		/*! \brief Helper constructor */
 		SymbolTable(const ELF<C> & elf, const typename Def::shdr_type section_type, void * header, const Section & symbol_section, const Section & version_section) :
 		    Array<Symbol>(Symbol(elf, symbol_section.link()), reinterpret_cast<uintptr_t>(symbol_section.data()), symbol_section.entries()),
 		    _elf(elf), section_type(section_type), header(header), versions(version_section.type() == Def::SHT_GNU_VERSYM ? version_section.get_versions() : nullptr) {
@@ -712,80 +715,75 @@ class ELF : public ELF_Def::Structures<C> {
 		}
 	};
 
-#if 0
-	/*! \brief Wrapper for both relocation types with generic Interface */
-	struct Relocation {
+	/*! \brief Generic interface for relocations */
+	struct Relocation : Accessor<void> {
 		/*! \brief Corresponding symbol table index */
-		union {
-			const Elf::RelocationWithoutAddend rel;
-			const Elf::RelocationWithAddend rela;
-		};
+		const uint16_t symtab;
 
-		bool hasAddend;
+		/*! \brief Does the structure contain an addend field? */
+		const bool withAddend;
 
 		/*! \brief Construct relocation entry
 		 * \param symtab Symbol table index for this relocation
 		 */
-		explicit Relocation(const Elf::RelocationWithoutAddend & rel) : rel(rel), hasAddend(false) {}
-		explicit Relocation(const Elf::RelocationWithAddend & rela) : rela(rela), hasAddend(false) {}
+		explicit Relocation(const ELF<C> & elf, uint16_t symtab = 0, bool withAddend = false) : Accessor<void>(elf), withAddend(withAddend), symtab(symtab) {}
 
 		/*! \brief Valid relocation */
 		bool valid() const {
-			return hasAddend ? rela.valid() : rel.valid();
+			return symtab != 0;
 		}
 
-		/*! \brief Target symbol */
-		Symbol symbol() const {
-			return hasAddend ? rela.symbol() : rel.symbol();
+		/*! \brief Address */
+		uintptr_t offset() const {
+			if (withAddend)
+				return static_cast<const typename Def::Rela*>(this->_data)->r_offset;
+			else
+				return static_cast<const typename Def::Rel*>(this->_data)->r_offset;
 		}
 
 		/*! \brief Relocation type and symbol index */
 		uintptr_t info() const {
-			return hasAddend ? rela.info() : rel.info();
+			if (withAddend)
+				return static_cast<const typename Def::Rela*>(this->_data)->r_info.value;
+			else
+				return static_cast<const typename Def::Rel*>(this->_data)->r_info.value;
 		}
 
 		/*! \brief Target symbol */
 		Symbol symbol() const {
-			return hasAddend ? rela.symbol() : rel.symbol();
+			return this->_elf.symbol(symtab, symbol_index());
 		}
 
 		/*! \brief Index of target symbol in corresponding symbol table */
 		uint32_t symbol_index() const {
-			return hasAddend ? rela.symbol_index() : rel.symbol_index();
+			if (withAddend)
+				return static_cast<const typename Def::Rela*>(this->_data)->r_info.sym;
+			else
+				return static_cast<const typename Def::Rel*>(this->_data)->r_info.sym;
+
 		}
 
 		/*! \brief Relocation type (depends on architecture) */
 		uint32_t type() const {
-			return hasAddend ? rela.type() : rel.type();
+			if (withAddend)
+				return static_cast<uint32_t>(static_cast<const typename Def::Rela*>(this->_data)->r_info.type);
+			else
+				return static_cast<uint32_t>(static_cast<const typename Def::Rel*>(this->_data)->r_info.type);
 		}
 
 		/*! \brief Addend */
 		intptr_t addend() const {
-			return hasAddend ? rela.addend() : rel.addend();
-		}
-	};
-
-	struct RelocationArray {
-		union {
-			const Array<Relocation> rel;
-			const Array<RelocationWithAddend> rela;
-		};
-
-		bool hasAddend;
-
-		Relocation operator[](size_t idx) const {
-			return hasAddend ? Relocation(rela[idx]) : Relocation(rel[idx]);
+			return withAddend ? static_cast<const typename Def::Rela*>(this->_data)->r_addend : 0;
 		}
 
-			/*! \brief Get accessor template
-			 * \return reference to current accessor
-			 */
-			const A & accessor() const {
-				return _accessor;
-			}
+		/*! \brief Pointer to next element (depending on underlying structure) */
+		const void * next(size_t i = 1) const {
+			if (withAddend)
+				return static_cast<const typename Def::Rela*>(this->_data) + i;
+			else
+				return static_cast<const typename Def::Rel*>(this->_data) + i;
+		}
 	};
-
-#endif
 
 	/*! \brief Dynamic table entry */
 	struct Dynamic : Accessor<typename Def::Dyn> {
@@ -1231,6 +1229,12 @@ class ELF : public ELF_Def::Structures<C> {
 			size_t entries = 0;
 			for (; entries < limit && dyn[entries].d_tag != Def::DT_NULL; entries++) {}
 			return Array<Dynamic>(Dynamic(this->_elf, link()), ptr, entries + 1);
+		}
+
+		/*! \brief Get contents of relocation section */
+		Array<Relocation> get_relocations() const {
+			assert(type() == Def::SHT_REL || type() == Def::SHT_RELA);
+			return Array<Relocation>(Relocation(this->_elf, link(), type() == Def::SHT_RELA), this->_elf.start + offset(), entries());
 		}
 
 		/*! \brief Array with elements
