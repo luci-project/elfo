@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
 
 #include "const.hpp"
 #include "ident.hpp"

@@ -120,12 +120,15 @@ class ELF : public ELF_Def::Structures<C> {
 			return a;
 		}
 
+		/*! \brief Create new accessor pointing to specific element */
 		static A _accessor_value(const A & accessor, uintptr_t ptr) {
 			return _accessor_value(accessor, reinterpret_cast<V>(ptr));
 		}
 
+		/*! \brief Constructor (using end pointer) */
 		Accessors(const A & accessor, V end) : _accessor(accessor), _end(end) {}
 
+		/*! \brief Constructor (using size) */
 		Accessors(const A & accessor, size_t entries) : _accessor(accessor), _end(_accessor.next(entries)) {}
 
 	 public:
