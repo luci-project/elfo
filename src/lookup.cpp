@@ -1,10 +1,13 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
-
 #include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
+
+#include <cstring>
+#include <cstdio>
+#include <cstdlib>
+
+#include <cxxabi.h>
 
 #include <iostream>
 #include <iomanip>
@@ -19,8 +22,15 @@
 template<ELFCLASS C>
 void elfsymbol(const ELF_Dyn<C> & elf, const typename ELF_Dyn<C>::Symbol & sym) {
 	auto index = elf.symbols.index(sym);
-	std::cout << "Symbol [" << index << "] '" << sym.name() << "':" << std::endl
-	          << "      Value: 0x" << std::hex << std::right << std::setfill('0') << std::setw(16) << sym.value() << std::endl
+	std::cout << "Symbol [" << index << "] '" << sym.name() << "':" << std::endl;
+
+	int status;
+	char * name = abi::__cxa_demangle(sym.name(), 0, 0, &status);
+	if (status == 0 && strcmp(name, sym.name()) != 0)
+		std::cout << "  Demangled: " << name << std::endl;
+	free(name);
+
+	std::cout << "      Value: 0x" << std::hex << std::right << std::setfill('0') << std::setw(16) << sym.value() << std::endl
 	          << "       Size: " << std::dec << std::left << std::setw(0) << sym.size() << " Bytes" << std::endl
 	          << "       Type: " << sym.type() << std::endl
 	          << "       Bind: " << sym.bind() << std::endl
