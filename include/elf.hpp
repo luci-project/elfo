@@ -65,6 +65,11 @@ class ELF : public ELF_Def::Structures<C> {
 		const DT * next(size_t i = 1) const {
 			return _data + i;
 		}
+
+		/*! \brief Pointer to next element */
+		const size_t entry_size() const {
+			return sizeof(DT);
+		}
 	};
 
 	/*! \brief Iterator */
@@ -183,7 +188,7 @@ class ELF : public ELF_Def::Structures<C> {
 		/*! \brief Number of elements in array
 		 */
 		size_t count() const {
-			return (reinterpret_cast<size_t>(this->_end) - reinterpret_cast<size_t>(this->_accessor._data)) / sizeof(*(this->_accessor._data));
+			return (reinterpret_cast<size_t>(this->_end) - reinterpret_cast<size_t>(this->_accessor._data)) / this->_accessor.entry_size();
 		}
 
 		/*! \brief Are there any elements in the array?
@@ -199,7 +204,7 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \return index
 		 */
 		size_t index(const A & element) const {
-			return (reinterpret_cast<size_t>(element._data) - reinterpret_cast<size_t>(this->_accessor._data)) / sizeof(*(this->_accessor._data));
+			return (reinterpret_cast<size_t>(element._data) - reinterpret_cast<size_t>(this->_accessor._data)) / this->_accessor.entry_size();
 		}
 	};
 
@@ -729,7 +734,7 @@ class ELF : public ELF_Def::Structures<C> {
 		/*! \brief Construct relocation entry
 		 * \param symtab Symbol table index for this relocation
 		 */
-		explicit Relocation(const ELF<C> & elf, uint16_t symtab = 0, bool withAddend = false) : Accessor<void>(elf), withAddend(withAddend), symtab(symtab) {}
+		explicit Relocation(const ELF<C> & elf, uint16_t symtab = 0, bool withAddend = false) : Accessor<void>(elf), symtab(symtab), withAddend(withAddend) {}
 
 		/*! \brief Valid relocation */
 		bool valid() const {
@@ -785,6 +790,13 @@ class ELF : public ELF_Def::Structures<C> {
 				return static_cast<const typename Def::Rela*>(this->_data) + i;
 			else
 				return static_cast<const typename Def::Rel*>(this->_data) + i;
+		}
+
+		const size_t entry_size() const {
+			if (withAddend)
+				return sizeof(typename Def::Rela);
+			else
+				return sizeof(typename Def::Rel);
 		}
 	};
 

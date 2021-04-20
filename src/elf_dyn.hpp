@@ -91,7 +91,7 @@ class ELF_Dyn : public ELF<C> {
 		}
 
 		auto section = this->section_by_offset(jmprel);
-		assert(jmprel == 0 || section.size() == pltrelsz);
+		assert((jmprel == 0 && pltrel == Elf::DT_NULL) || section.size() == pltrelsz);
 		return section.get_relocations();
 	}
 

@@ -299,7 +299,7 @@ struct Relocator : private ELF_Def::Constants {
 	template<typename Symbol>
 	uintptr_t apply(uintptr_t base, const Symbol & symbol, uintptr_t symbol_base, uintptr_t global_offset_table = 0, uintptr_t plt_entry = 0) const {
 		assert(symbol.section_index() != SHN_UNDEF);
-		return relocate_value(base, value(base, symbol, symbol_base, global_offset_table, plt_entry));
+		return apply_value(base, value(base, symbol, symbol_base, global_offset_table, plt_entry));
 	}
 
 	/*! \brief Get relocation value (for internal symbol)
@@ -309,7 +309,7 @@ struct Relocator : private ELF_Def::Constants {
 	 */
 	uintptr_t apply(uintptr_t base, uintptr_t global_offset_table = 0, uintptr_t plt_entry = 0) const {
 		assert(entry.symbol().section_index() != SHN_UNDEF);
-		return relocate_value(base, value(base, global_offset_table, plt_entry));
+		return apply_value(base, value(base, global_offset_table, plt_entry));
 	}
 
  private:
