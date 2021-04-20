@@ -6,13 +6,15 @@
 #include "elf.hpp"
 
 /*! \brief Calculate relocation */
-template<ELFCLASS C, typename RELOC>
-struct Relocator {
+template<typename RELOC>
+struct Relocator : private ELF_Def::Constants {
+	using RELF = decltype(RELOC::_elf);
+
 	/*! \brief Offset in object to be relocated */
-	const ELF<C>::RELOC & entry;
+	const RELOC & entry;
 
 	/*! \brief Constructor */
-	Relocator(const ELF<C>::RELOC & entry) : entry(entry) {
+	Relocator(const RELOC & entry) : entry(entry) {
 		assert(entry.valid());
 	}
 
@@ -23,7 +25,8 @@ struct Relocator {
 	 * \param global_offset_table address of the global offset table (in this object)
 	 * \param plt_entry PLT entry of the symbol
 	 */
-	uintptr_t value(uintptr_t base, const ELF<C>::Symbol & symbol, uintptr_t symbol_base, uintptr_t global_offset_table = 0, uintptr_t plt_entry = 0) const {
+	template<typename Symbol>
+	uintptr_t value(uintptr_t base, const Symbol & symbol, uintptr_t symbol_base, uintptr_t global_offset_table = 0, uintptr_t plt_entry = 0) const {
 		assert(symbol.valid());
 
 		const intptr_t A = entry.addend();
@@ -36,49 +39,49 @@ struct Relocator {
 		const uintptr_t Z = symbol.size();
 
 		switch (entry.elf().header.machine()) {
-			case ELF<C>::EM_386:
-			case ELF<C>::EM_486:
+			case EM_386:
+			case EM_486:
 			switch (entry.type()) {
-				case ELF<C>::R_386_NONE:
+				case R_386_NONE:
 					return 0;
 
-				case ELF<C>::R_386_COPY:
+				case R_386_COPY:
 					assert(false);
 					return 0;
 
-				case ELF<C>::R_386_8:
-				case ELF<C>::R_386_16:
-				case ELF<C>::R_386_32:
+				case R_386_8:
+				case R_386_16:
+				case R_386_32:
 					return S + A;
 
-				case ELF<C>::R_386_PC8:
-				case ELF<C>::R_386_PC16:
-				case ELF<C>::R_386_PC32:
+				case R_386_PC8:
+				case R_386_PC16:
+				case R_386_PC32:
 					return S + A - P;
 
-				case ELF<C>::R_386_GOT32:
+				case R_386_GOT32:
 					return G + A;
 
-				case ELF<C>::R_386_PLT32:
+				case R_386_PLT32:
 					return L + A - P;
 
-				case ELF<C>::R_386_GLOB_DAT:
-				case ELF<C>::R_386_JMP_SLOT:
+				case R_386_GLOB_DAT:
+				case R_386_JMP_SLOT:
 					return S;
 
-				case ELF<C>::R_386_RELATIVE:
+				case R_386_RELATIVE:
 					return B + A;
 
-				case ELF<C>::R_386_GOTOFF:
+				case R_386_GOTOFF:
 					return S + A - GOT;
 
-				case ELF<C>::R_386_GOTPC:
+				case R_386_GOTPC:
 					return GOT + A - P;
 
-				case ELF<C>::R_386_32PLT:
+				case R_386_32PLT:
 					return L + A;
 
-				case ELF<C>::R_386_SIZE32:
+				case R_386_SIZE32:
 					return Z + A;
 
 				default: // Not recognized!
@@ -86,58 +89,58 @@ struct Relocator {
 					return 0;
 			}
 
-			case ELF<C>::EM_X86_64:
+			case EM_X86_64:
 				switch (entry.type()) {
-					case ELF<C>::R_X86_64_NONE:
+					case R_X86_64_NONE:
 						return 0;
 
-					case ELF<C>::R_X86_64_COPY:
+					case R_X86_64_COPY:
 						assert(false);
 						return 0;
 
-					case ELF<C>::R_X86_64_GLOB_DAT:
-					case ELF<C>::R_X86_64_JUMP_SLOT:
+					case R_X86_64_GLOB_DAT:
+					case R_X86_64_JUMP_SLOT:
 						return S;
 
-					case ELF<C>::R_X86_64_8:
-					case ELF<C>::R_X86_64_16:
-					case ELF<C>::R_X86_64_32:
-					case ELF<C>::R_X86_64_32S:
-					case ELF<C>::R_X86_64_64:
+					case R_X86_64_8:
+					case R_X86_64_16:
+					case R_X86_64_32:
+					case R_X86_64_32S:
+					case R_X86_64_64:
 						return S + A;
 
-					case ELF<C>::R_X86_64_PC8:
-					case ELF<C>::R_X86_64_PC16:
-					case ELF<C>::R_X86_64_PC32:
-					case ELF<C>::R_X86_64_PC64:
+					case R_X86_64_PC8:
+					case R_X86_64_PC16:
+					case R_X86_64_PC32:
+					case R_X86_64_PC64:
 						return S + A - P;
 
-					case ELF<C>::R_X86_64_GOT32:
+					case R_X86_64_GOT32:
 						return G + A;
 
-					case ELF<C>::R_X86_64_PLT32:
+					case R_X86_64_PLT32:
 						return L + A - P;
 
-					case ELF<C>::R_X86_64_RELATIVE:
-					case ELF<C>::R_X86_64_RELATIVE64:
+					case R_X86_64_RELATIVE:
+					case R_X86_64_RELATIVE64:
 						return B + A;
 
-					case ELF<C>::R_X86_64_GOTPCREL:
-					case ELF<C>::R_X86_64_GOTPCRELX:
-					case ELF<C>::R_X86_64_REX_GOTPCRELX:
+					case R_X86_64_GOTPCREL:
+					case R_X86_64_GOTPCRELX:
+					case R_X86_64_REX_GOTPCRELX:
 						return G + GOT + A - P;
 
-					case ELF<C>::R_X86_64_GOTOFF64:
+					case R_X86_64_GOTOFF64:
 						return S + A - GOT;
 
-					case ELF<C>::R_X86_64_GOTPC32:
+					case R_X86_64_GOTPC32:
 						return GOT + A - P;
 
-					case ELF<C>::R_X86_64_SIZE32:
-					case ELF<C>::R_X86_64_SIZE64:
+					case R_X86_64_SIZE32:
+					case R_X86_64_SIZE64:
 						return Z + A;
 
-					case ELF<C>::R_X86_64_IRELATIVE:
+					case R_X86_64_IRELATIVE:
 					{
 						typedef uintptr_t (*indirect_t)();
 						indirect_t func = reinterpret_cast<indirect_t>(B + A);
@@ -169,32 +172,32 @@ struct Relocator {
 	 */
 	size_t size() const {
 		switch (entry.elf().header.machine()) {
-			case ELF<C>::EM_386:
-			case ELF<C>::EM_486:
+			case EM_386:
+			case EM_486:
 				switch (entry.type()) {
-					case ELF<C>::R_386_NONE:
-					case ELF<C>::R_386_COPY:
+					case R_386_NONE:
+					case R_386_COPY:
 						return 0;
 
-					case ELF<C>::R_386_8:
-					case ELF<C>::R_386_PC8:
+					case R_386_8:
+					case R_386_PC8:
 						return 1;
 
-					case ELF<C>::R_386_16:
-					case ELF<C>::R_386_PC16:
+					case R_386_16:
+					case R_386_PC16:
 						return 2;
 
-					case ELF<C>::R_386_32:
-					case ELF<C>::R_386_PC32:
-					case ELF<C>::R_386_GOT32:
-					case ELF<C>::R_386_PLT32:
-					case ELF<C>::R_386_GLOB_DAT:
-					case ELF<C>::R_386_JMP_SLOT:
-					case ELF<C>::R_386_RELATIVE:
-					case ELF<C>::R_386_GOTOFF:
-					case ELF<C>::R_386_GOTPC:
-					case ELF<C>::R_386_32PLT:
-					case ELF<C>::R_386_SIZE32:
+					case R_386_32:
+					case R_386_PC32:
+					case R_386_GOT32:
+					case R_386_PLT32:
+					case R_386_GLOB_DAT:
+					case R_386_JMP_SLOT:
+					case R_386_RELATIVE:
+					case R_386_GOTOFF:
+					case R_386_GOTPC:
+					case R_386_32PLT:
+					case R_386_SIZE32:
 						return 4;
 
 					default:  // Not recognized!
@@ -202,61 +205,61 @@ struct Relocator {
 						return 0;
 				}
 
-			case ELF<C>::EM_X86_64:
+			case EM_X86_64:
 				switch (entry.type()) {
-					case ELF<C>::R_X86_64_NONE:
-					case ELF<C>::R_X86_64_COPY:
+					case R_X86_64_NONE:
+					case R_X86_64_COPY:
 						return 0;
 
-					case ELF<C>::R_X86_64_8:
-					case ELF<C>::R_X86_64_PC8:
+					case R_X86_64_8:
+					case R_X86_64_PC8:
 						return 1;
 
-					case ELF<C>::R_X86_64_16:
-					case ELF<C>::R_X86_64_PC16:
+					case R_X86_64_16:
+					case R_X86_64_PC16:
 						return 2;
 
-					case ELF<C>::R_X86_64_PC32:
-					case ELF<C>::R_X86_64_GOT32:
-					case ELF<C>::R_X86_64_PLT32:
-					case ELF<C>::R_X86_64_GOTPCREL:
-					case ELF<C>::R_X86_64_32:
-					case ELF<C>::R_X86_64_32S:
-					case ELF<C>::R_X86_64_TLSGD:
-					case ELF<C>::R_X86_64_TLSLD:
-					case ELF<C>::R_X86_64_DTPOFF32:
-					case ELF<C>::R_X86_64_GOTTPOFF:
-					case ELF<C>::R_X86_64_TPOFF32:
-					case ELF<C>::R_X86_64_GOTPC32:
-					case ELF<C>::R_X86_64_SIZE32:
-					case ELF<C>::R_X86_64_GOTPC32_TLSDESC:
+					case R_X86_64_PC32:
+					case R_X86_64_GOT32:
+					case R_X86_64_PLT32:
+					case R_X86_64_GOTPCREL:
+					case R_X86_64_32:
+					case R_X86_64_32S:
+					case R_X86_64_TLSGD:
+					case R_X86_64_TLSLD:
+					case R_X86_64_DTPOFF32:
+					case R_X86_64_GOTTPOFF:
+					case R_X86_64_TPOFF32:
+					case R_X86_64_GOTPC32:
+					case R_X86_64_SIZE32:
+					case R_X86_64_GOTPC32_TLSDESC:
 						return 4;
 
-					case ELF<C>::R_X86_64_64:
-					case ELF<C>::R_X86_64_RELATIVE64:
-					case ELF<C>::R_X86_64_DTPMOD64:
-					case ELF<C>::R_X86_64_DTPOFF64:
-					case ELF<C>::R_X86_64_TPOFF64:
-					case ELF<C>::R_X86_64_PC64:
-					case ELF<C>::R_X86_64_GOTOFF64:
-					case ELF<C>::R_X86_64_SIZE64:
-					case ELF<C>::R_X86_64_GOT64:
-					case ELF<C>::R_X86_64_GOTPCREL64:
-					case ELF<C>::R_X86_64_GOTPC64:
-					case ELF<C>::R_X86_64_GOTPLT64:
-					case ELF<C>::R_X86_64_PLTOFF64:
+					case R_X86_64_64:
+					case R_X86_64_RELATIVE64:
+					case R_X86_64_DTPMOD64:
+					case R_X86_64_DTPOFF64:
+					case R_X86_64_TPOFF64:
+					case R_X86_64_PC64:
+					case R_X86_64_GOTOFF64:
+					case R_X86_64_SIZE64:
+					case R_X86_64_GOT64:
+					case R_X86_64_GOTPCREL64:
+					case R_X86_64_GOTPC64:
+					case R_X86_64_GOTPLT64:
+					case R_X86_64_PLTOFF64:
 						return 8;
 
-					case ELF<C>::R_X86_64_GLOB_DAT:
-					case ELF<C>::R_X86_64_JUMP_SLOT:
-					case ELF<C>::R_X86_64_RELATIVE:
+					case R_X86_64_GLOB_DAT:
+					case R_X86_64_JUMP_SLOT:
+					case R_X86_64_RELATIVE:
 #ifdef __LP64__
 						return 8;
 #else // ILP32
 						return 4;
 #endif
 
-					case ELF<C>::R_X86_64_TLSDESC:
+					case R_X86_64_TLSDESC:
 						return 16;
 
 					default:  // Not recognized!
@@ -293,8 +296,9 @@ struct Relocator {
 	 * \param global_offset_table address of the global offset table (in this object)
 	 * \param plt_entry PLT entry of the symbol
 	 */
-	uintptr_t apply(uintptr_t base, const ELF<C>::Symbol & symbol, uintptr_t symbol_base, uintptr_t global_offset_table = 0, uintptr_t plt_entry = 0) const {
-		assert(symbol.section_index() != ELF<C>::SHN_UNDEF);
+	template<typename Symbol>
+	uintptr_t apply(uintptr_t base, const Symbol & symbol, uintptr_t symbol_base, uintptr_t global_offset_table = 0, uintptr_t plt_entry = 0) const {
+		assert(symbol.section_index() != SHN_UNDEF);
 		return relocate_value(base, value(base, symbol, symbol_base, global_offset_table, plt_entry));
 	}
 
@@ -304,7 +308,7 @@ struct Relocator {
 	 * \param plt_entry PLT entry of the symbol
 	 */
 	uintptr_t apply(uintptr_t base, uintptr_t global_offset_table = 0, uintptr_t plt_entry = 0) const {
-		assert(entry.symbol().section_index() != ELF<C>::SHN_UNDEF);
+		assert(entry.symbol().section_index() != SHN_UNDEF);
 		return relocate_value(base, value(base, global_offset_table, plt_entry));
 	}
 

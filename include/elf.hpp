@@ -1296,7 +1296,7 @@ class ELF : public ELF_Def::Structures<C> {
 	}
 
 	/*! \brief get class of ELF object */
-	static typename Def::ident_class elfclass() {
+	static constexpr typename Def::ident_class elfclass() {
 		return C;
 	}
 
