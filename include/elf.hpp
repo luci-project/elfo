@@ -66,8 +66,8 @@ class ELF : public ELF_Def::Structures<C> {
 			return _data + i;
 		}
 
-		/*! \brief Pointer to next element */
-		const size_t entry_size() const {
+		/*! \brief Size (in bytes) of an entry */
+		size_t entry_size() const {
 			return sizeof(DT);
 		}
 	};
@@ -792,7 +792,8 @@ class ELF : public ELF_Def::Structures<C> {
 				return static_cast<const typename Def::Rel*>(this->_data) + i;
 		}
 
-		const size_t entry_size() const {
+		/*! \brief Size (in bytes) of an entry */
+		size_t entry_size() const {
 			if (withAddend)
 				return sizeof(typename Def::Rela);
 			else
@@ -1261,7 +1262,7 @@ class ELF : public ELF_Def::Structures<C> {
 			if (type() == Def::SHT_NULL) {
 				return Array<ACCESSOR>(ACCESSOR(this->_elf, link()), 0, 0);
 			} else {
-				assert(entry_size() == sizeof(*ACCESSOR::_data));
+				assert(entry_size() == ACCESSOR(this->_elf, link()).entry_size());
 				return Array<ACCESSOR>(ACCESSOR(this->_elf, link()), this->_elf.start + offset(), entries());
 			}
 		}
