@@ -508,17 +508,36 @@ class ELF : public ELF_Def::Structures<C> {
 				required_version = Def::VER_NDX_GLOBAL;
 			switch (section_type) {
 				case Def::SHT_HASH:
-					return index_by_hash(search_name, required_version);
+					return index_by_hash(search_name, ELF_Def::hash(search_name), required_version);
 				case Def::SHT_GNU_HASH:
-					return index_by_gnuhash(search_name, required_version);
+					return index_by_gnuhash(search_name, ELF_Def::gnuhash(search_name), required_version);
 				case Def::SHT_DYNSYM:
 				case Def::SHT_SYMTAB:
-				{
-					const auto entries = this->count();
-					for (size_t i = 1; i < entries; i++)
-						if (this->strcmp(search_name, name(i)) == 0 && (required_version == Def::VER_NDX_GLOBAL || required_version == version(i)))
-							return i;
-				}
+					return index_by_strcmp(search_name, required_version);
+				default:
+					return Def::STN_UNDEF;
+			}
+		}
+
+		/*! \brief Find symbol using calculated hash values
+		 * \note Undefined symbols are usually excluded from hash hence they might not be found using this method!
+		 * \param search_name symbol name to search
+		 * \param hash_value elf hash value of symbol_name
+		 * \param gnu_hash_value gnu hash value
+		 * \param required_version required version or VER_NDX_GLOBAL if none
+		 * \return index of object or STN_UNDEF
+		 */
+		size_t index(const char * search_name, uint32_t hash_value, uint32_t gnu_hash_value, uint16_t required_version = Def::VER_NDX_GLOBAL) const {
+			if (required_version != Def::VER_NDX_GLOBAL && versions == nullptr)
+				required_version = Def::VER_NDX_GLOBAL;
+			switch (section_type) {
+				case Def::SHT_HASH:
+					return index_by_hash(search_name, hash_value, required_version);
+				case Def::SHT_GNU_HASH:
+					return index_by_gnuhash(search_name, gnu_hash_value, required_version);
+				case Def::SHT_DYNSYM:
+				case Def::SHT_SYMTAB:
+					return index_by_strcmp(search_name, required_version);
 				default:
 					return Def::STN_UNDEF;
 			}
@@ -561,17 +580,16 @@ class ELF : public ELF_Def::Structures<C> {
 		/*! \brief Find symbol index using ELF Hash
 		 * \see https://flapenguin.me/elf-dt-hash
 		 * \param search_name symbol name to search
+		 * \param hash_value elf hash value of symbol_name
 		 * \return index of object or STN_UNDEF
 		 */
-		uint32_t index_by_hash(const char *search_name, uint16_t required_version) const {
+		uint32_t index_by_hash(const char *search_name, uint32_t hash_value, uint16_t required_version) const {
 			const ELF_Def::Hash_header * header = reinterpret_cast<const ELF_Def::Hash_header*>(this->header);
 			const uint32_t * bucket = reinterpret_cast<const uint32_t *>(header + 1);
 			const uint32_t * chain = bucket + header->nbucket;
 
-			const uint32_t h = ELF_Def::hash(search_name);
-
-			for (uint32_t i = bucket[h % (header->nbucket)]; i; i = chain[i])
-				if (!SymbolTable::strcmp(search_name, SymbolTable::name(i)) && (required_version == Def::VER_NDX_GLOBAL || required_version == version(i)))
+			for (uint32_t i = bucket[hash_value % (header->nbucket)]; i; i = chain[i])
+				if (!strcmp(search_name, SymbolTable::name(i)) && check_version(i, required_version))
 					return i;
 
 			return Def::STN_UNDEF;
@@ -581,33 +599,33 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \see https://blogs.oracle.com/solaris/gnu-hash-elf-sections-v2
 		 * \see https://flapenguin.me/elf-dt-gnu-hash
 		 * \param search_name symbol name to search
+		 * \param hash_value gnu hash value
 		 * \return index of object or STN_UNDEF
 		 */
-		uint32_t index_by_gnuhash(const char *search_name, uint16_t required_version) const {
+		uint32_t index_by_gnuhash(const char *search_name, uint32_t hash_value, uint16_t required_version) const {
 			const ELF_Def::GnuHash_header * header = reinterpret_cast<const ELF_Def::GnuHash_header*>(this->header);
 			const elfptr_t * bloom = reinterpret_cast<const elfptr_t *>(header + 1);
 			const uint32_t * buckets = reinterpret_cast<const uint32_t *>(bloom + header->bloom_size);
 			const uint32_t * chain = buckets + header->nbuckets;
 
-			uint32_t h1 = ELF_Def::gnuhash(search_name);
 			const uint32_t c = sizeof(elfptr_t) * 8;
 			const elfptr_t one = 1;
-			const elfptr_t mask = (one << (h1 % c))
-			                    | (one << ((h1 >> header->bloom_shift) % c));
+			const elfptr_t mask = (one << (hash_value % c))
+			                    | (one << ((hash_value >> header->bloom_shift) % c));
 
-			elfptr_t n = (h1 / c) % header->bloom_size;
+			elfptr_t n = (hash_value / c) % header->bloom_size;
 			if ((bloom[n] & mask) != mask)
 				return Def::STN_UNDEF;
 
-			n = buckets[h1 % header->nbuckets];
+			n = buckets[hash_value % header->nbuckets];
 			if (n == 0)
 				return Def::STN_UNDEF;
 
 			const uint32_t * hashval = chain + (n - header->symoffset);
 
-			for (h1 &= ~1; true; n++) {
+			for (hash_value &= ~1; true; n++) {
 				uint32_t h2 = *hashval++;
-				if ((h1 == (h2 & ~1)) && !SymbolTable::strcmp(search_name, SymbolTable::name(n)) && (required_version == Def::VER_NDX_GLOBAL || required_version == version(n)))
+				if ((hash_value == (h2 & ~1)) && !strcmp(search_name, SymbolTable::name(n)) && check_version(n, required_version))
 					return n;
 				if (h2 & 1)
 					break;
@@ -615,17 +633,24 @@ class ELF : public ELF_Def::Structures<C> {
 			return Def::STN_UNDEF;
 		}
 
-		static inline int strcmp(const char *s1, const char *s2) {
-			if (s1 == s2)
-				return 0;
-			else if (s1 == nullptr)
-				return -1;
-			else if (s2 == nullptr)
-				return 1;
-			while (*s1 == *s2++)
-				if (*s1++ == '\0')
-					return 0;
-			return static_cast<int>(*s1) - static_cast<int>(*(s2-1));
+		/*! \brief Find symbol index using string comparison
+		 * \param search_name symbol name to search
+		 * \return index of object or STN_UNDEF
+		 */
+		uint32_t index_by_strcmp(const char *search_name, uint16_t required_version) const {
+			const auto entries = this->count();
+			for (size_t i = 1; i < entries; i++)
+				if (!strcmp(search_name, name(i)) && check_version(i, required_version))
+					return i;
+			return Def::STN_UNDEF;
+		}
+
+		/*! \brief Helper to compare version
+		 */
+		inline bool check_version(size_t idx, uint16_t required_version) const {
+			return required_version == Def::VER_NDX_GLOBAL
+			    || versions == nullptr
+			    || required_version == versions[idx];
 		}
 	};
 
