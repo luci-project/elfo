@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cassert>
+#include <cstring>
 #include <string>
 #include <utility>
 
@@ -589,7 +590,7 @@ class ELF : public ELF_Def::Structures<C> {
 			const uint32_t * chain = bucket + header->nbucket;
 
 			for (uint32_t i = bucket[hash_value % (header->nbucket)]; i; i = chain[i])
-				if (!strcmp(search_name, SymbolTable::name(i)) && check_version(i, required_version))
+				if (!::strcmp(search_name, SymbolTable::name(i)) && check_version(i, required_version))
 					return i;
 
 			return Def::STN_UNDEF;
@@ -625,7 +626,7 @@ class ELF : public ELF_Def::Structures<C> {
 
 			for (hash_value &= ~1; true; n++) {
 				uint32_t h2 = *hashval++;
-				if ((hash_value == (h2 & ~1)) && !strcmp(search_name, SymbolTable::name(n)) && check_version(n, required_version))
+				if ((hash_value == (h2 & ~1)) && !::strcmp(search_name, SymbolTable::name(n)) && check_version(n, required_version))
 					return n;
 				if (h2 & 1)
 					break;
@@ -640,7 +641,7 @@ class ELF : public ELF_Def::Structures<C> {
 		uint32_t index_by_strcmp(const char *search_name, uint16_t required_version) const {
 			const auto entries = this->count();
 			for (size_t i = 1; i < entries; i++)
-				if (!strcmp(search_name, name(i)) && check_version(i, required_version))
+				if (!::strcmp(search_name, name(i)) && check_version(i, required_version))
 					return i;
 			return Def::STN_UNDEF;
 		}
