@@ -68,7 +68,7 @@ class ELF : public ELF_Def::Structures<C> {
 		}
 
 		/*! \brief Size (in bytes) of an entry */
-		size_t entry_size() const {
+		size_t element_size() const {
 			return sizeof(DT);
 		}
 	};
@@ -175,7 +175,9 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \param ptr Pointer to first element
 		 * \param entries number of elements
 		 */
-		Array(const A & accessor, uintptr_t ptr, size_t entries) : Accessors<A>(this->_accessor_value(accessor, ptr), entries) { }
+		Array(const A & accessor, uintptr_t ptr, size_t entries) : Accessors<A>(this->_accessor_value(accessor, ptr), entries) {
+			assert(this->_accessor.element_size() > 0);
+		}
 
 		/*! \brief Array-like access
 		 * \param idx index
@@ -189,7 +191,7 @@ class ELF : public ELF_Def::Structures<C> {
 		/*! \brief Number of elements in array
 		 */
 		size_t count() const {
-			return (reinterpret_cast<size_t>(this->_end) - reinterpret_cast<size_t>(this->_accessor._data)) / this->_accessor.entry_size();
+			return (reinterpret_cast<size_t>(this->_end) - reinterpret_cast<size_t>(this->_accessor._data)) / this->_accessor.element_size();
 		}
 
 		/*! \brief Are there any elements in the array?
@@ -205,7 +207,7 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \return index
 		 */
 		size_t index(const A & element) const {
-			return (reinterpret_cast<size_t>(element._data) - reinterpret_cast<size_t>(this->_accessor._data)) / this->_accessor.entry_size();
+			return (reinterpret_cast<size_t>(element._data) - reinterpret_cast<size_t>(this->_accessor._data)) / this->_accessor.element_size();
 		}
 	};
 
@@ -819,7 +821,7 @@ class ELF : public ELF_Def::Structures<C> {
 		}
 
 		/*! \brief Size (in bytes) of an entry */
-		size_t entry_size() const {
+		size_t element_size() const {
 			if (withAddend)
 				return sizeof(typename Def::Rela);
 			else
@@ -1288,7 +1290,7 @@ class ELF : public ELF_Def::Structures<C> {
 			if (type() == Def::SHT_NULL) {
 				return Array<ACCESSOR>(ACCESSOR(this->_elf, link()), 0, 0);
 			} else {
-				assert(entry_size() == ACCESSOR(this->_elf, link()).entry_size());
+				assert(entry_size() == ACCESSOR(this->_elf, link()).element_size());
 				return Array<ACCESSOR>(ACCESSOR(this->_elf, link()), this->_elf.start + offset(), entries());
 			}
 		}
