@@ -308,12 +308,12 @@ class ELF : public ELF_Def::Structures<C> {
 			return this->e_version;
 		}
 
-		/*! \brief Object file version */
+		/*! \brief Object entry point */
 		uintptr_t entry() const {
 			return this->e_entry;
 		}
 
-		/*! \brief Object file version */
+		/*! \brief Object flags  */
 		uint32_t flags() const {
 			return this->e_flags;
 		}

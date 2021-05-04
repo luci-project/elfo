@@ -91,6 +91,20 @@ namespace ELF_Def {
 		unsigned abiversion() const {
 			return static_cast<unsigned>(ei_abiversion);
 		}
+
+		/*! \brief Compare identification */
+		bool operator==(const Identification & other) const {
+			return valid() && other.valid()
+			    && elfclass()   != other.elfclass()
+			    && data()       != other.data()
+			    && version()    != other.version()
+			    && abi()        != other.abi()
+			    && abiversion() != other.abiversion();
+		}
+
+		bool operator!=(const Identification & other) const {
+			return !operator==(other);
+		}
 	} __attribute__((packed));
 
 }  // namespace ELF_Def
