@@ -18,7 +18,7 @@ struct Relocator : private ELF_Def::Constants {
 		assert(entry.valid());
 	}
 
-	/*! \brief Get relocation value (for external symbol)
+	/*! \brief Get relocation fix value (for external symbol)
 	 * \param base Base address in target memory of the object to which this relocation belongs to
 	 * \param symbol (External) Symbol (from another object)
 	 * \param symbol_base base address of the object providing the external symbol
@@ -27,8 +27,6 @@ struct Relocator : private ELF_Def::Constants {
 	 */
 	template<typename Symbol>
 	uintptr_t value(uintptr_t base, const Symbol & symbol, uintptr_t symbol_base, uintptr_t global_offset_table = 0, uintptr_t plt_entry = 0) const {
-		assert(symbol.valid());
-
 		const intptr_t A = entry.addend();
 		const uintptr_t B = base;
 		const uintptr_t G = symbol_base + symbol.value();
@@ -158,7 +156,7 @@ struct Relocator : private ELF_Def::Constants {
 			}
 	}
 
-	/*! \brief Get relocation value for internal symbol
+	/*! \brief Get relocation fix value for internal symbol
 	 * \param base Base address of the object to which this relocation belongs to
 	 * \param global_offset_table address of the global offset table (in this object)
 	 * \param plt_entry PLT entry of the symbol
@@ -273,8 +271,31 @@ struct Relocator : private ELF_Def::Constants {
 		}
 	}
 
-	/*! \brief Fix relocation */
-	uintptr_t apply_value(uintptr_t base, uintptr_t value) const {
+	/*! \brief Read the current target value
+	 * \param base base address
+	 * \return current value
+	 */
+	uintptr_t read_value(uintptr_t base) const {
+		const uintptr_t mem = base + entry.offset();
+
+		switch (size()) {
+			case 0: return 0;
+			case 1: return read<uint8_t>(mem);
+			case 2: return read<uint16_t>(mem);
+			case 4: return read<uint32_t>(mem);
+			case 8: return read<uint64_t>(mem);
+			default:
+				assert(false);
+				return 0;
+		}
+	}
+
+	/*! \brief Write a new value to target
+	 * \param base base address
+	 * \param value new value to write at target
+	 * \return new value
+	 */
+	uintptr_t write_value(uintptr_t base, uintptr_t value) const {
 		const uintptr_t mem = base + entry.offset();
 
 		switch (size()) {
@@ -289,7 +310,27 @@ struct Relocator : private ELF_Def::Constants {
 		}
 	}
 
-	/*! \brief Get relocation value for external symbol
+	/*! \brief Increment target value
+	 * \param base base address
+	 * \param delta_value delta to add to value
+	 * \return new value
+	 */
+	uintptr_t increment_value(uintptr_t base, uintptr_t delta_value) const {
+		const uintptr_t mem = base + entry.offset();
+
+		switch (size()) {
+			case 0: return 0;
+			case 1: return increment<uint8_t>(mem, delta_value);
+			case 2: return increment<uint16_t>(mem, delta_value);
+			case 4: return increment<uint32_t>(mem, delta_value);
+			case 8: return increment<uint64_t>(mem, delta_value);
+			default:
+				assert(false);
+				return 0;
+		}
+	}
+
+	/*! \brief Calculate and apply relocation for external symbol
 	 * \param base Base address in target memory of the object to which this relocation belongs to
 	 * \param symbol (External) Symbol in another object
 	 * \param symbol_base base address of the object providing the external symbol
@@ -297,22 +338,33 @@ struct Relocator : private ELF_Def::Constants {
 	 * \param plt_entry PLT entry of the symbol
 	 */
 	template<typename Symbol>
-	uintptr_t apply(uintptr_t base, const Symbol & symbol, uintptr_t symbol_base, uintptr_t global_offset_table = 0, uintptr_t plt_entry = 0) const {
+	uintptr_t fix(uintptr_t base, const Symbol & symbol, uintptr_t symbol_base, uintptr_t global_offset_table = 0, uintptr_t plt_entry = 0) const {
 		assert(symbol.section_index() != SHN_UNDEF);
-		return apply_value(base, value(base, symbol, symbol_base, global_offset_table, plt_entry));
+		return write_value(base, value(base, symbol, symbol_base, global_offset_table, plt_entry));
 	}
 
-	/*! \brief Get relocation value (for internal symbol)
+	/*! \brief Calculate and apply relocation (for internal symbol)
 	 * \param base Base address in target memory of the object to which this relocation belongs to
 	 * \param global_offset_table address of the global offset table
 	 * \param plt_entry PLT entry of the symbol
 	 */
-	uintptr_t apply(uintptr_t base, uintptr_t global_offset_table = 0, uintptr_t plt_entry = 0) const {
-		assert(entry.symbol().section_index() != SHN_UNDEF);
-		return apply_value(base, value(base, global_offset_table, plt_entry));
+	uintptr_t fix(uintptr_t base, uintptr_t global_offset_table = 0, uintptr_t plt_entry = 0) const {
+		assert(entry.symbol().section_index() == SHN_UNDEF);
+		return write_value(base, value(base, global_offset_table, plt_entry));
 	}
 
  private:
+	/*! \brief Read from a specific memory address
+	* \tparam T size of value
+	* \param mem memory address
+	* \return current value
+	*/
+	template<typename T>
+	static uintptr_t read(uintptr_t mem) {
+		T * m = reinterpret_cast<T *>(mem);
+		return static_cast<uintptr_t>(*m);
+	}
+
 	/*! \brief Write at a specific memory address
 	* \tparam T size of value
 	* \param mem memory address
@@ -326,5 +378,19 @@ struct Relocator : private ELF_Def::Constants {
 		*m = v;
 		assert(static_cast<intptr_t>(v) == static_cast<intptr_t>(value));
 		return static_cast<uintptr_t>(v);
+	}
+
+	/*! \brief Increment the contents of a specific memory address
+	* \tparam T size of value
+	* \param mem memory address
+	* \param delta_value value to add to the contents
+	* \return written value
+	*/
+	template<typename T>
+	static uintptr_t increment(uintptr_t mem, uintptr_t delta_value) {
+		T v = static_cast<T>(delta_value);
+		T * m = reinterpret_cast<T *>(mem);
+		*m += v;
+		return static_cast<uintptr_t>(*m);
 	}
 };
