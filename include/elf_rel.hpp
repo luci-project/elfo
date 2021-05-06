@@ -32,7 +32,7 @@ struct Relocator : private ELF_Def::Constants {
 		const uintptr_t G = symbol_base + symbol.value();
 		const uintptr_t GOT = global_offset_table;
 		const uintptr_t L = plt_entry;
-		const uintptr_t P = base + entry.offset();
+		const uintptr_t P = address(base);
 		const uintptr_t S = symbol_base + symbol.value();
 		const uintptr_t Z = symbol.size();
 
@@ -271,12 +271,20 @@ struct Relocator : private ELF_Def::Constants {
 		}
 	}
 
-	/*! \brief Read the current target value
+	/*! \brief Target address for relocation
+	 * \param base base address
+	 * \return target address
+	 */
+	uintptr_t address(uintptr_t base) const {
+		return base + entry.offset();
+	}
+
+	/*! \brief Read the current value in target address
 	 * \param base base address
 	 * \return current value
 	 */
 	uintptr_t read_value(uintptr_t base) const {
-		const uintptr_t mem = base + entry.offset();
+		const uintptr_t mem = address(base);
 
 		switch (size()) {
 			case 0: return 0;
@@ -290,13 +298,13 @@ struct Relocator : private ELF_Def::Constants {
 		}
 	}
 
-	/*! \brief Write a new value to target
+	/*! \brief Write a new value to target address
 	 * \param base base address
 	 * \param value new value to write at target
 	 * \return new value
 	 */
 	uintptr_t write_value(uintptr_t base, uintptr_t value) const {
-		const uintptr_t mem = base + entry.offset();
+		const uintptr_t mem = address(base);
 
 		switch (size()) {
 			case 0: return 0;
@@ -316,7 +324,7 @@ struct Relocator : private ELF_Def::Constants {
 	 * \return new value
 	 */
 	uintptr_t increment_value(uintptr_t base, uintptr_t delta_value) const {
-		const uintptr_t mem = base + entry.offset();
+		const uintptr_t mem = address(base);
 
 		switch (size()) {
 			case 0: return 0;
