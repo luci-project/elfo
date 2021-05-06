@@ -95,11 +95,11 @@ namespace ELF_Def {
 		/*! \brief Compare identification */
 		bool operator==(const Identification & other) const {
 			return valid() && other.valid()
-			    && elfclass()   != other.elfclass()
-			    && data()       != other.data()
-			    && version()    != other.version()
-			    && abi()        != other.abi()
-			    && abiversion() != other.abiversion();
+			    && elfclass()   == other.elfclass()
+			    && data()       == other.data()
+			    && version()    == other.version()
+			    && abi()        == other.abi()
+			    && abiversion() == other.abiversion();
 		}
 
 		bool operator!=(const Identification & other) const {

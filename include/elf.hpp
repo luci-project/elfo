@@ -21,7 +21,9 @@ class ELF : public ELF_Def::Structures<C> {
 	using elfptr_t = typename Def::Elf_Addr;
 
 	/*! \brief Start address of ELF in memory */
-	const uintptr_t start;
+	uintptr_t start() const {
+		return reinterpret_cast<uintptr_t>(&header);
+	}
 
 	/*! \brief Accessor to wrap elements of a given data type
 	 * \tparam DT data type of element
@@ -336,7 +338,7 @@ class ELF : public ELF_Def::Structures<C> {
 
 		/*! \brief Pointer to segment data */
 		void * data() const {
-			return reinterpret_cast<void*>(this->_elf.start + this->_data->p_offset);
+			return reinterpret_cast<void*>(this->_elf.start() + this->_data->p_offset);
 		}
 
 		/*! \brief Segment size (in ELF file)*/
@@ -381,7 +383,7 @@ class ELF : public ELF_Def::Structures<C> {
 
 		/*! \brief Get interpreter path */
 		const char * path() const {
-			return type() == Def::PT_INTERP ? reinterpret_cast<const char *>(this->_elf.start + this->_data->p_offset) : nullptr;
+			return type() == Def::PT_INTERP ? reinterpret_cast<const char *>(this->_elf.start() + this->_data->p_offset) : nullptr;
 		}
 	};
 
@@ -1184,7 +1186,7 @@ class ELF : public ELF_Def::Structures<C> {
 
 		/*! \brief Pointer to dection contents */
 		void * data() const {
-			return reinterpret_cast<void*>(this->_elf.start + this->_data->sh_offset);
+			return reinterpret_cast<void*>(this->_elf.start() + this->_data->sh_offset);
 		}
 
 		/*! \brief Section size in bytes */
@@ -1266,7 +1268,7 @@ class ELF : public ELF_Def::Structures<C> {
 		Array<Dynamic> get_dynamic() const {
 			assert(type() == Def::SHT_DYNAMIC);
 			// Calculate length
-			uintptr_t ptr = this->_elf.start + offset();
+			uintptr_t ptr = this->_elf.start() + offset();
 			typename Def::Dyn * dyn = reinterpret_cast<typename Def::Dyn *>(ptr);
 			assert(entry_size() == sizeof(*dyn));
 			size_t limit = this->entries() - 1;
@@ -1278,7 +1280,7 @@ class ELF : public ELF_Def::Structures<C> {
 		/*! \brief Get contents of relocation section */
 		Array<Relocation> get_relocations() const {
 			assert(type() == Def::SHT_REL || type() == Def::SHT_RELA);
-			return Array<Relocation>(Relocation(this->_elf, link(), type() == Def::SHT_RELA), this->_elf.start + offset(), entries());
+			return Array<Relocation>(Relocation(this->_elf, link(), type() == Def::SHT_RELA), this->_elf.start() + offset(), entries());
 		}
 
 		/*! \brief Array with elements
@@ -1291,7 +1293,7 @@ class ELF : public ELF_Def::Structures<C> {
 				return Array<ACCESSOR>(ACCESSOR(this->_elf, link()), 0, 0);
 			} else {
 				assert(entry_size() == ACCESSOR(this->_elf, link()).element_size());
-				return Array<ACCESSOR>(ACCESSOR(this->_elf, link()), this->_elf.start + offset(), entries());
+				return Array<ACCESSOR>(ACCESSOR(this->_elf, link()), this->_elf.start() + offset(), entries());
 			}
 		}
 
@@ -1308,7 +1310,7 @@ class ELF : public ELF_Def::Structures<C> {
 			} else {
 				using V = decltype(ACCESSOR::_data);
 				assert(entry_size() == 0);
-				uintptr_t begin_adr = this->_elf.start + offset();
+				uintptr_t begin_adr = this->_elf.start() + offset();
 				return List<ACCESSOR>(ACCESSOR(this->_elf, link()), reinterpret_cast<const V>(begin_adr), last_is_nullptr ? nullptr : reinterpret_cast<const V>(begin_adr + size()));
 			}
 		}
@@ -1325,16 +1327,22 @@ class ELF : public ELF_Def::Structures<C> {
 	Array<Section> sections;
 
 	/*! \brief Construct new ELF object
-	 * \paran start Pointer to start adress of memory mapped file
+	 * \paran address Pointer to start adress of memory mapped file
 	 */
-	ELF(uintptr_t start) : start(start),
-	    header(*reinterpret_cast<Header*>(start)),
-	    segments(Segment(*this), start + header.e_phoff, header.e_phnum),
-	    sections(Section(*this), start + header.e_shoff, header.e_shnum) {
+	ELF(uintptr_t address)
+	 :  header(*reinterpret_cast<Header*>(address)),
+	    segments(Segment(*this), address + header.e_phoff, header.e_phnum),
+	    sections(Section(*this), address + header.e_shoff, header.e_shnum) {
 		assert(sizeof(Header) == header.e_ehsize);
 		assert(sizeof(typename Def::Phdr) == header.e_phentsize);
 		assert(sizeof(typename Def::Shdr) == header.e_shentsize);
 	}
+
+#ifdef VIRTUAL
+	/*! \brief Virtual destructor for polymorphic object
+	 */
+	virtual ~ELF() = default;
+#endif
 
 	/*! \brief get class of ELF object */
 	static constexpr typename Def::ident_class elfclass() {
@@ -1424,7 +1432,7 @@ class ELF : public ELF_Def::Structures<C> {
 	 */
 	const char * string(const Section & section, uint32_t offset) const {
 		assert(section.type() == Def::SHT_STRTAB);
-		return reinterpret_cast<const char *>(start + section.offset() + offset);
+		return reinterpret_cast<const char *>(start() + section.offset() + offset);
 	}
 
 	/*! \brief Get string
