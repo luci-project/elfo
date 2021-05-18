@@ -1413,6 +1413,7 @@ class ELF : public ELF_Def::Structures<C> {
 	/*! \brief Get symbol
 	 * \param section symbol table section
 	 * \param index index of symbol in table
+	 * \return Symbol
 	 */
 	Symbol symbol(const Section & section, uint32_t index) const {
 		return section.get_symbols()[index];
@@ -1421,6 +1422,7 @@ class ELF : public ELF_Def::Structures<C> {
 	/*! \brief Get symbol
 	 * \param section_index symbol table section index
 	 * \param index index of symbol in table
+	 * \return Symbol
 	 */
 	Symbol symbol(uint16_t section_index, uint32_t index) const {
 		return symbol(sections[section_index], index);
@@ -1429,6 +1431,7 @@ class ELF : public ELF_Def::Structures<C> {
 	/*! \brief Get string
 	 * \param section string table section
 	 * \param offset offset of string in table
+	 * \return String
 	 */
 	const char * string(const Section & section, uint32_t offset) const {
 		assert(section.type() == Def::SHT_STRTAB);
@@ -1438,9 +1441,46 @@ class ELF : public ELF_Def::Structures<C> {
 	/*! \brief Get string
 	 * \param section_index string table section index
 	 * \param offset offset of string in table
+	 * \return String
 	 */
 	const char * string(uint16_t section_index, uint32_t offset) const {
 		return string(sections[section_index], offset);
+	}
+
+	/*! \brief Calculate size of Elf
+	 * \return size
+	 */
+	size_t size() const {
+		// Elf Header
+		size_t size = header.e_ehsize;
+
+		// Program Header Table
+		size_t ph_size =  header.e_phoff + header.e_phnum * header.e_phentsize;
+		if (ph_size > size)
+			size = ph_size;
+
+		// Segments (in Program Header Table)
+		for (auto & s : segments) {
+			size_t seg_size = s.offset() + s.size();
+			if (seg_size > size)
+				size = seg_size;
+		}
+
+
+		// Section Header Table
+		// (usually this is located at the end)
+		size_t sh_size =  header.e_shoff + header.e_shnum * header.e_shentsize;
+		if (sh_size > size)
+			size = sh_size;
+
+		// Sections
+		for (auto & s : sections) {
+			size_t sec_size = s.offset() + s.size();
+			if (sec_size > size)
+				size = sec_size;
+		}
+
+		return size;
 	}
 };
 
