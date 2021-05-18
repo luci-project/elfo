@@ -131,6 +131,7 @@ class Dump {
 		     << "  Size of section headers:           " << DEC() << elf.header.e_shentsize << " (bytes)" << endl
 		     << "  Number of section headers:         " << DEC() << elf.header.e_shnum << endl
 		     << "  Section header string table index: " << DEC() << elf.header.e_shstrndx << endl
+		     << "  Size:                              " << DEC() << elf.size() << " (bytes)" << endl
 		     << RESET() << endl;
 	}
 
