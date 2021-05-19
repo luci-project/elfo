@@ -145,6 +145,9 @@ struct Relocator : private ELF_Def::Constants {
 						return func();
 					}
 
+					case R_X86_64_TPOFF64:
+						return 0;
+
 					default: // Not recognized!
 						assert(false);
 						return 0;
@@ -251,6 +254,7 @@ struct Relocator : private ELF_Def::Constants {
 					case R_X86_64_GLOB_DAT:
 					case R_X86_64_JUMP_SLOT:
 					case R_X86_64_RELATIVE:
+					case R_X86_64_IRELATIVE:
 #ifdef __LP64__
 						return 8;
 #else // ILP32

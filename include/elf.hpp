@@ -498,7 +498,15 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \return Symbol version or VER_NDX_GLOBAL if none
 		 */
 		inline const uint16_t version(uint32_t idx) const{
-			return versions == nullptr ? Def::VER_NDX_GLOBAL : versions[idx];
+			return versions == nullptr ? Def::VER_NDX_GLOBAL : (versions[idx] & 0x7fff);
+		}
+
+		/*! \brief Get the high order bit of the symbol version index by symbol index
+		 * \param idx symbol index
+		 * \return true if high order bit is set
+		 */
+		inline bool ignored(uint32_t idx) const{
+			return versions == nullptr ? false : ((versions[idx] & 0x8000) != 0);
 		}
 
 		/*! \brief Find symbol
@@ -655,7 +663,7 @@ class ELF : public ELF_Def::Structures<C> {
 		inline bool check_version(size_t idx, uint16_t required_version) const {
 			return required_version == Def::VER_NDX_GLOBAL
 			    || versions == nullptr
-			    || required_version == versions[idx];
+			    || required_version == (versions[idx] & 0x7fff);
 		}
 	};
 
@@ -1333,10 +1341,16 @@ class ELF : public ELF_Def::Structures<C> {
 	 :  header(*reinterpret_cast<Header*>(address)),
 	    segments(Segment(*this), address + header.e_phoff, header.e_phnum),
 	    sections(Section(*this), address + header.e_shoff, header.e_shnum) {
+		assert(address != 0);
 		assert(sizeof(Header) == header.e_ehsize);
 		assert(sizeof(typename Def::Phdr) == header.e_phentsize);
 		assert(sizeof(typename Def::Shdr) == header.e_shentsize);
 	}
+
+	/*! \brief Construct new ELF object
+	 * \paran address Pointer to start adress of memory mapped file
+	 */
+	ELF(void * address) : ELF(reinterpret_cast<uintptr_t>(address)) {};
 
 #ifdef VIRTUAL
 	/*! \brief Virtual destructor for polymorphic object

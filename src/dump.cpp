@@ -387,8 +387,9 @@ class Dump {
 		for (size_t i = 0; i < section.entries(); i++) {
 			if (i % 10 == 0)
 				cout << endl;
-			cout << " " << DECPAD(5) << i << ":"
-			     << " " << PAD(2) << version[i];
+			cout << "  " << DECPAD(4) << i << ":"
+			     << " " << PAD(2) << (version[i] & 0x7fff)
+			     << (version[i] & 0x8000 ? 'h' : ' ');
 		}
 		cout << RESET() << endl
 		     << endl;
