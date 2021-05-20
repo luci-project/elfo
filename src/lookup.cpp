@@ -107,7 +107,7 @@ bool elflookup(void * addr, size_t length, const std::vector<const char*> & symb
 			}
 
 			// Find symbol
-			auto idx = elf.symbols.index(name, version);
+			auto idx = elf.symbols.index(name.c_str(), version);
 			if (idx != ELF_Dyn<C>::STN_UNDEF) {
 				elfsymbol(elf, elf.symbols[idx]);
 				found++;

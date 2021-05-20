@@ -2,8 +2,6 @@
 
 #include <cassert>
 #include <cstring>
-#include <string>
-#include <utility>
 
 #include "elf_def/ident.hpp"
 #include "elf_def/types.hpp"
@@ -556,26 +554,14 @@ class ELF : public ELF_Def::Structures<C> {
 			}
 		}
 
-		/*! \brief Find symbol
-		 * use hash if available
-		 * \note Undefined symbols are usually excluded from hash hence they might not be found using this method!
+		/*! \brief Access symbol by char* index
 		 * \param search_name symbol name to search
-		 * \param required_version required version or VER_NDX_GLOBAL if none
-		 * \return index of object or STN_UNDEF
+		 * \return Symbol
 		 */
-		size_t index(const std::string & search_name, uint16_t required_version = Def::VER_NDX_GLOBAL) const {
-			return index(search_name.c_str(), required_version);
-		}
-
-		/*! \brief Access symbol by char* index */
 		inline Symbol operator[](const char * search_name) const {
 			return operator[](index(search_name));  // 0 == UNDEF
 		}
 
-		/*! \brief Access symbol by string index */
-		inline Symbol operator[](const std::string & search_name) const {
-			return operator[](search_name.c_str());
-		}
 
 	 private:
 		/*! \brief Helper constructor */
