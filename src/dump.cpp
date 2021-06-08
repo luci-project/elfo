@@ -1,8 +1,13 @@
+#ifdef USE_DLH
+#include <dlh/types.hpp>
+#include <dlh/stream/output.hpp>
+#include <dlh/utils/file.hpp>
+#else
 #include <iostream>
 #include <iomanip>
-
 #include <fstream>
 #include <stdint.h>
+#endif
 
 #include "elf.hpp"
 
@@ -26,8 +31,8 @@ class Dump {
 	const ELF<C> elf;
 
 	void notes_helper(const Note & note) {
-		if (!elf.header.type() != ELF<C>::ET_CORE) {
-			if (note.name() != nullptr && string(note.name()) == "GNU") {
+		if (elf.header.type() != ELF<C>::ET_CORE) {
+			if (note.name() != nullptr && strcmp(note.name(), "GNU") == 0) {
 				switch (note.type()) {
 					case ELF<C>::NT_GNU_ABI_TAG:
 					{
@@ -60,7 +65,7 @@ class Dump {
 						cout << "NT_GNU_BUILD_ID: ";
 						auto desc = reinterpret_cast<const uint8_t *>(note.description());
 						for (size_t i = 0; i < note.size(); i++) {
-							cout << HEXPADSHORT(2) << static_cast<const uint32_t>(desc[i]);
+							cout << HEXPADSHORT(2) << static_cast<uint32_t>(desc[i]);
 						}
 						return;
 					}
@@ -70,7 +75,7 @@ class Dump {
 						cout << "NT_GNU_GOLD_VERSION: ";
 						auto desc = reinterpret_cast<const uint8_t *>(note.description());
 						for (size_t i = 0; i < note.size(); i++)
-							cout << HEXPADSHORT(2) << static_cast<const uint32_t>(desc[i]);
+							cout << HEXPADSHORT(2) << static_cast<uint32_t>(desc[i]);
 						return;
 					}
 
@@ -99,7 +104,7 @@ class Dump {
 		cout << note.type() << ":";
 		auto desc = reinterpret_cast<const uint8_t *>(note.description());
 		for (size_t i = 0; i < note.size(); i++)
-			cout << " " << HEXPADSHORT(2) << static_cast<const uint32_t>(desc[i]);
+			cout << " " << HEXPADSHORT(2) << static_cast<uint32_t>(desc[i]);
 	}
 
  public:
@@ -142,18 +147,20 @@ class Dump {
 
 		// Section
 		for (auto & section: elf.sections) {
-			string flags;
-			if (section.writeable())        flags.append("W");
-			if (section.allocate())         flags.append("A");
-			if (section.executable())       flags.append("X");
-			if (section.merge())            flags.append("M");
-			if (section.strings())          flags.append("S");
-			if (section.info_link())        flags.append("I");
-			if (section.link_order())       flags.append("L");
-			if (section.os_nonconforming()) flags.append("O");
-			if (section.group())            flags.append("G");
-			if (section.tls())              flags.append("T");
-			if (section.compressed())       flags.append("C");
+			char flagsbuf[15];
+			char * flags = flagsbuf;
+			if (section.writeable())        *(flags++) = 'W';
+			if (section.allocate())         *(flags++) = 'A';
+			if (section.executable())       *(flags++) = 'X';
+			if (section.merge())            *(flags++) = 'M';
+			if (section.strings())          *(flags++) = 'S';
+			if (section.info_link())        *(flags++) = 'I';
+			if (section.link_order())       *(flags++) = 'L';
+			if (section.os_nonconforming()) *(flags++) = 'O';
+			if (section.group())            *(flags++) = 'G';
+			if (section.tls())              *(flags++) = 'T';
+			if (section.compressed())       *(flags++) = 'C';
+			*flags = '\0';
 
 			cout << "  [" << DECPAD(2) << elf.sections.index(section) << "]"
 			     << " " << PAD(19) << section.name()
@@ -201,7 +208,7 @@ class Dump {
 		for (auto & segment: elf.segments) {
 			cout << "  " << DECPAD(2) << elf.segments.index(segment);
 			for (auto & section: elf.sections)
-				if (segment.offset() <= section.offset() && section.offset() < segment.offset() + segment.size() && !string(section.name()).empty())
+				if (segment.offset() <= section.offset() && section.offset() < segment.offset() + segment.size() && strlen(section.name()) > 0)
 					cout << " " << section.name();
 			cout << endl;
 		}
@@ -487,6 +494,12 @@ int main(int argc, char * argv[]) {
 		return 1;
 	}
 
+#if USE_DLH
+	size_t length;
+	char * buf = reinterpret_cast<char*>(File::contents(argv[1], length));
+	if (buf == nullptr)
+		return 1;
+#else
 	// Open File
 	ifstream ifs(argv[1], ios::binary | ios::ate);
 	if (!ifs.is_open()) {
@@ -508,6 +521,7 @@ int main(int argc, char * argv[]) {
 		cerr << "Reading " << argv[1] << " failed!" << endl;
 		return 1;
 	}
+#endif
 
 	// Read ELF Identification
 	ELF_Ident * ident = reinterpret_cast<ELF_Ident *>(buf);

@@ -1,8 +1,17 @@
 DEPDIR := .deps
 CXXFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$@.d -Og -g -I include/
+CXXFLAGS += -Wall -Wextra -Wno-switch -Wno-unused-variable -Wno-comment
 SOURCES := $(wildcard src/*.cpp)
 TARGETS := $(notdir $(SOURCES:%.cpp=%))
 DEPFILES := $(addprefix $(DEPDIR)/,$(addsuffix .d,$(TARGETS)))
+LDFLAGS :=
+
+ifdef DLH
+CXXFLAGS += -std=c++17 -I $(DLH)/include -L $(DLH) -DUSE_DLH
+CXXFLAGS += -fno-exceptions -fno-rtti -fno-use-cxa-atexit -no-pie
+CXXFLAGS += -nostdlib -nostdinc
+LDFLAGS += -ldlh
+endif
 
 all: $(TARGETS)
 
@@ -18,7 +27,7 @@ $(eval $(call include_str_template,elf_def/const.hpp,ELF_Def Constants))
 $(eval $(call include_str_template,elf_def/ident.hpp,ELF_Def Identification))
 
 %: src/%.cpp src/_str_const.hpp src/_str_ident.hpp Makefile | $(DEPDIR)
-	$(CXX) $(CXXFLAGS) -o $@ $<
+	$(CXX) $(CXXFLAGS) -o $@ $< $(LDFLAGS)
 
 $(DEPDIR): ; @mkdir -p $@
 

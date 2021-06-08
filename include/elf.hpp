@@ -1,13 +1,18 @@
 #pragma once
 
+#ifdef USE_DLH
+#include <dlh/assert.hpp>
+#include <dlh/string.hpp>
+#else
 #include <cassert>
 #include <cstring>
+#endif
 
-#include "elf_def/ident.hpp"
-#include "elf_def/types.hpp"
 #include "elf_def/const.hpp"
-#include "elf_def/struct.hpp"
+#include "elf_def/ident.hpp"
 #include "elf_def/hash.hpp"
+#include "elf_def/struct.hpp"
+#include "elf_def/types.hpp"
 
 
 /*! \brief Parser for data in the Executable and Linking Format
@@ -495,7 +500,7 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \param idx symbol index
 		 * \return Symbol version or VER_NDX_GLOBAL if none
 		 */
-		inline const uint16_t version(uint32_t idx) const{
+		inline uint16_t version(uint32_t idx) const{
 			return versions == nullptr ? Def::VER_NDX_GLOBAL : (versions[idx] & 0x7fff);
 		}
 

@@ -1,6 +1,10 @@
 #pragma once
 
+#ifdef USE_DLH
+#include <dlh/types.hpp>
+#else
 #include <cstdint>
+#endif
 
 namespace ELF_Def {
 

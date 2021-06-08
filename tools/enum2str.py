@@ -12,31 +12,38 @@ enum = Suppress('enum') + Suppress(ZeroOrMore('class')) + identifier('enum') + S
 header = """
 #pragma once
 
+#ifdef USE_DLH
+#include <dlh/types.hpp>
+#include <dlh/stream/buffer.hpp>
+#include <dlh/utility.hpp>
+using ostream = BufferStream;
+#else
 #include <cstdint>
 #include <ostream>
-#include <vector>
+using std::ostream;
+#endif
 
 #include "{include}"
 
 #ifndef _ENUM_VALUE
 #define _ENUM_VALUE 1
 static bool _enum_value = false;
-inline std::ostream& enum_value_show(std::ostream& os) {{ _enum_value = true; return os; }}
-inline std::ostream& enum_value_hide(std::ostream& os) {{ _enum_value = false; return os; }}
+inline ostream& enum_value_show(ostream& os) {{ _enum_value = true; return os; }}
+inline ostream& enum_value_hide(ostream& os) {{ _enum_value = false; return os; }}
 #endif
 """
 
 fstart = """
-std::ostream& operator<<(std::ostream& os, {ident} val) {{
+ostream& operator<<(ostream& os, {ident} val) {{
 	switch(val) {{
 """
 fcase = '		case {ident}::{name}: return os << (_enum_value ? "{name} ({value})" : "{name}");'
 fend = """	}};
 	if (_enum_value) os << "({ident})";
-	return os << static_cast<std::uintptr_t>(val);
+	return os << static_cast<uintptr_t>(val);
 }}
 
-static std::initializer_list<{ident}> _enum_values_{enum} = {{{list}}};
+static {ident} _enum_values_{enum}[] = {{{list}}};
 """
 
 print(header.format(include = sys.argv[1]))

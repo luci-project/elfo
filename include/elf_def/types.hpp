@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cstdint>
-
 #include "ident.hpp"
 
 using ELFCLASS = ELF_Def::Identification::ident_class;

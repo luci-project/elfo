@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cstdint>
-
 #include "const.hpp"
 #include "ident.hpp"
 #include "types.hpp"

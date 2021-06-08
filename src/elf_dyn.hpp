@@ -1,8 +1,10 @@
 #pragma once
 
-#include <string>
-#include <vector>
-#include <map>
+#ifdef USE_DLH
+#include <dlh/string.hpp>
+#else
+#include <cstring>
+#endif
 
 #include "elf.hpp"
 
@@ -24,8 +26,6 @@ class ELF_Dyn : public ELF<C> {
 	using Def = typename ELF_Def::Structures<C>;
 	using elfptr_t = typename Def::Elf_Addr;
 
-	std::map<uint16_t, std::string> version_idx_to_name;
-	std::map<std::string, uint16_t> version_name_to_idx;
 
 	/*! \brief Find dynamic section */
 	constexpr auto find_dynamic() const {
@@ -109,31 +109,22 @@ class ELF_Dyn : public ELF<C> {
 	    relocations(find_dynamic_relocations()),
 	    version_needed(get_dynamic_section(Def::DT_VERNEED).template get_list<VersionNeeded>(true)),
 	    version_definition(get_dynamic_section(Def::DT_VERDEF).template get_list<VersionDefinition>(true)) {
+	}
 
+	uint16_t version_index(const char * name) const {
 		for (auto & v : version_needed)
-			for (auto & aux : v.auxiliary()) {
-				auto name = std::string(aux.name());
-				auto idx = aux.version_index();
-				version_idx_to_name[idx] = name;
-				version_name_to_idx[name] = idx;
-			}
+			for (auto & aux : v.auxiliary())
+				if (strcmp(name, aux.name()) == 0)
+					return aux.version_index();
 
 		for (auto & v : version_definition)
-			if (!v.base()) {
-				auto name = std::string(v.auxiliary()[0].name());
-				auto idx = v.version_index();
-				version_idx_to_name[idx] = name;
-				version_name_to_idx[name] = idx;
-			}
+			if (!v.base() && strcmp(name, v.auxiliary()[0].name()) == 0)
+				return v.version_index();
 
+		return Def::VER_NDX_GLOBAL;
 	}
 
-	uint16_t version_index(std::string name) const {
-		auto index = version_name_to_idx.find(name);
-		return index == version_name_to_idx.end() ? Def::VER_NDX_GLOBAL : index->second;
-	}
-
-	std::string version_name(uint16_t index) const {
+	const char * version_name(uint16_t index) const {
 		switch (index) {
 			case Def::VER_NDX_LOCAL:
 				return "*local*";
@@ -142,8 +133,16 @@ class ELF_Dyn : public ELF<C> {
 			case Def::VER_NDX_ELIMINATE:
 				return "*eliminate*";
 		}
-		auto name = version_idx_to_name.find(index);
-		return name == version_idx_to_name.end() ? "*invalid*" : name->second;
+		for (auto & v : version_needed)
+			for (auto & aux : v.auxiliary())
+				if (index == aux.version_index())
+					return aux.name();
+
+		for (auto & v : version_definition)
+			if (!v.base() && index == v.version_index())
+				return v.auxiliary()[0].name();
+
+		return "*invalid*";
 	}
 
 };

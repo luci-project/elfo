@@ -1,8 +1,5 @@
 #pragma once
 
-#include <cassert>
-#include <cstdint>
-
 #include "elf.hpp"
 
 /*! \brief Calculate relocation */

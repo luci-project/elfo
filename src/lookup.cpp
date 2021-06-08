@@ -1,3 +1,12 @@
+#ifdef USE_DLH
+#include <dlh/container/vector.hpp>
+#include <dlh/stream/output.hpp>
+#include <dlh/utils/strptr.hpp>
+#include <dlh/unistd.hpp>
+#include <dlh/alloc.hpp>
+
+#define vector Vector
+#else
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -14,6 +23,8 @@
 
 #include <vector>
 
+using namespace std;
+#endif
 #include "elf_dyn.hpp"
 
 #include "_str_const.hpp"
@@ -22,60 +33,62 @@
 template<ELFCLASS C>
 void elfsymbol(const ELF_Dyn<C> & elf, const typename ELF_Dyn<C>::Symbol & sym) {
 	auto index = elf.symbols.index(sym);
-	std::cout << "Symbol [" << index << "] '" << sym.name() << "':" << std::endl;
+	cout << "Symbol [" << index << "] '" << sym.name() << "':" << endl;
 
+#ifndef USE_DLH
 	int status;
 	char * name = abi::__cxa_demangle(sym.name(), 0, 0, &status);
 	if (status == 0 && strcmp(name, sym.name()) != 0)
-		std::cout << "  Demangled: " << name << std::endl;
+		cout << "  Demangled: " << name << endl;
 	free(name);
+#endif
 
-	std::cout << "      Value: 0x" << std::hex << std::right << std::setfill('0') << std::setw(16) << sym.value() << std::endl
-	          << "       Size: " << std::dec << std::left << std::setw(0) << sym.size() << " Bytes" << std::endl
-	          << "       Type: " << sym.type() << std::endl
-	          << "       Bind: " << sym.bind() << std::endl
-	          << " Visibility: " << sym.visibility() << std::endl
+	cout << "      Value: 0x" << hex << right << setfill('0') << setw(16) << sym.value() << endl
+	          << "       Size: " << dec << left << setw(0) << sym.size() << " Bytes" << endl
+	          << "       Type: " << sym.type() << endl
+	          << "       Bind: " << sym.bind() << endl
+	          << " Visibility: " << sym.visibility() << endl
 	          << "    Section: ";
 	switch (sym.section_index()) {
-		case ELF_Dyn<C>::SHN_UNDEF:  std::cout << "UND"; break;
-		case ELF_Dyn<C>::SHN_ABS:    std::cout << "ABS"; break;
-		case ELF_Dyn<C>::SHN_COMMON: std::cout << "CMN"; break;
-		case ELF_Dyn<C>::SHN_XINDEX: std::cout << "XDX"; break;
-		default: std::cout << sym.section_index() << " (" << elf.sections[sym.section_index()].name() << ")";
+		case ELF_Dyn<C>::SHN_UNDEF:  cout << "UND"; break;
+		case ELF_Dyn<C>::SHN_ABS:    cout << "ABS"; break;
+		case ELF_Dyn<C>::SHN_COMMON: cout << "CMN"; break;
+		case ELF_Dyn<C>::SHN_XINDEX: cout << "XDX"; break;
+		default: cout << sym.section_index() << " (" << elf.sections[sym.section_index()].name() << ")";
 	}
 
 	auto version = elf.symbols.version(index);
-	std::cout << std::endl
-	          << "    Version: " << version << " (" << elf.version_name(version) << ")" << std::endl;
+	cout << endl
+	          << "    Version: " << version << " (" << elf.version_name(version) << ")" << endl;
 
 	for (auto & rel : elf.relocations)
 		if (rel.symbol() == sym) {
-			std::cout << " Relocation: Offset 0x" << std::hex << rel.offset() << std::endl
+			cout << " Relocation: Offset 0x" << hex << rel.offset() << endl
 			          << "             Type ";
 			auto type = rel.type();
 			switch (elf.header.machine()) {
 				case ELF<C>::EM_386:
 				case ELF<C>::EM_486:
-					std::cout << static_cast<typename ELF<C>::rel_386>(type);
+					cout << static_cast<typename ELF<C>::rel_386>(type);
 					break;
 				case ELF<C>::EM_X86_64:
-					std::cout << static_cast<typename ELF<C>::rel_x86_64>(type);
+					cout << static_cast<typename ELF<C>::rel_x86_64>(type);
 					break;
 				default:
-					std::cout << std::hex << type;
+					cout << hex << type;
 			}
-			std::cout << std::endl
-			          << "             Addend " << std::dec << rel.addend() << std::endl;
+			cout << endl
+			          << "             Addend " << dec << rel.addend() << endl;
 		}
 
-	std::cout << std::endl;
+	cout << endl;
 }
 
 template<ELFCLASS C>
-bool elflookup(void * addr, size_t length, const std::vector<const char*> & symbols) {
+bool elflookup(void * addr, size_t length, const vector<char*> & symbols) {
 	ELF_Dyn<C> elf(reinterpret_cast<uintptr_t>(addr));
 	if (!elf.valid(length)) {
-		std::cerr << "No valid ELF file!" << std::endl;
+		cerr << "No valid ELF file!" << endl;
 		return false;
 	}
 
@@ -86,49 +99,48 @@ bool elflookup(void * addr, size_t length, const std::vector<const char*> & symb
 				elfsymbol(elf, symbol);
 			}
 		}
-		std::cout << "(" << elf.symbols.count() << " dynamic symbols in file)" << std::endl;
+		cout << "(" << elf.symbols.count() << " dynamic symbols in file)" << endl;
 	} else {
 		size_t found = 0;
-		for (auto & sym : symbols) {
+		for (auto & name : symbols) {
 			// Check version
-			auto symstr = std::string(sym);
-			auto split = symstr.find_last_of('@');
-			std::string name = symstr.substr(0, split);
-
 			uint32_t version = ELF_Dyn<C>::VER_NDX_GLOBAL;
-			if (split != symstr.npos) {
-				std::string version_name = symstr.substr(split + 1);
+			auto version_name = strrchr(name, '@');
+			if (version_name != nullptr) {
+				// Replace '@' by end delimiter
+				*(version_name++) = '\0';
+
 				version = elf.version_index(version_name);
 				if (version == ELF_Dyn<C>::VER_NDX_GLOBAL) {
-					std::cerr << "Unknown version '" << version_name << "' for symbol '" << sym << "' -- skipping!" << std::endl;
+					cerr << "Unknown version '" << version_name << "' for symbol '" << name << "' -- skipping!" << endl;
 					success = false;
 					continue;
 				}
 			}
 
 			// Find symbol
-			auto idx = elf.symbols.index(name.c_str(), version);
+			auto idx = elf.symbols.index(name, version);
 			if (idx != ELF_Dyn<C>::STN_UNDEF) {
 				elfsymbol(elf, elf.symbols[idx]);
 				found++;
 			} else {
-				std::cerr << "Symbol '" << sym << "' not found!" << std::endl;
+				cerr << "Symbol '" << name << "' not found!" << endl;
 				success = false;
 			}
 		}
-		std::cout << "(found " << found << " of " << symbols.size() << " given dynamic symbols in file)" << std::endl;
+		cout << "(found " << found << " of " << symbols.size() << " given dynamic symbols in file)" << endl;
 	}
 	return success;
 }
 
-bool lookup(void * addr, size_t length, const std::vector<const char*> & symbols){
+bool lookup(void * addr, size_t length, const vector<char*> & symbols){
 	// Read ELF Identification
 	ELF_Ident * ident = reinterpret_cast<ELF_Ident *>(addr);
 	if (length < sizeof(ELF_Ident) || !ident->valid()) {
-		std::cerr << "No valid ELF identification header!" << std::endl;
+		cerr << "No valid ELF identification header!" << endl;
 		return false;
 	} else if (!ident->data_supported()) {
-		std::cerr << "Unsupported encoding (must be " << ident->data_host() << ")!" << std::endl;
+		cerr << "Unsupported encoding (must be " << ident->data_host() << ")!" << endl;
 		return false;
 	} else {
 		switch (ident->elfclass()) {
@@ -139,16 +151,16 @@ bool lookup(void * addr, size_t length, const std::vector<const char*> & symbols
 				return elflookup<ELFCLASS::ELFCLASS64>(addr, length, symbols);
 
 			default:
-				std::cerr << "Unsupported class '" << ident->elfclass() << "'" << std::endl;
+				cerr << "Unsupported class '" << ident->elfclass() << "'" << endl;
 				return false;
 		}
 	}
 }
 
-int main(int argc, const char *argv[]) {
+int main(int argc, char *argv[]) {
 	// Check arguments
 	if (argc < 2) {
-		std::cerr << "Usage: " << argv[0] << " ELF-FILE [SYMBOL[S]]" << std::endl;
+		cerr << "Usage: " << argv[0] << " ELF-FILE [SYMBOL[S]]" << endl;
 		return EXIT_FAILURE;
 	}
 
@@ -177,7 +189,7 @@ int main(int argc, const char *argv[]) {
 	}
 
 	// Lookup symbols
-	bool success = lookup(addr, length, std::vector<const char*>(argv + 2, argv + argc));
+	bool success = lookup(addr, length, vector<char*>(argv + 2, argv + argc));
 
 	// Cleanup
 	::munmap(addr, length);
