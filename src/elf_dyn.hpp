@@ -6,7 +6,7 @@
 #include <cstring>
 #endif
 
-#include "elf.hpp"
+#include <elfo/elf.hpp>
 
 template<ELFCLASS C>
 class ELF_Dyn : public ELF<C> {

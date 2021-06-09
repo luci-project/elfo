@@ -1,4 +1,4 @@
-#include "elf.hpp"
+#include <elfo/elf.hpp>
 
 #ifdef USE_DLH
 #include <dlh/stream/output.hpp>

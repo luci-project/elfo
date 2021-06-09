@@ -16,8 +16,8 @@ endif
 all: $(TARGETS)
 
 define include_str_template =
-src/_str_$(notdir $(1)): include/$(1) tools/enum2str.py Makefile
-	$$(CXX) -fpreprocessed -dD -E $$< 2>/dev/null | tools/enum2str.py $(1) $(2) > $$@
+src/_str_$(notdir $(1)): include/elfo/$(1) tools/enum2str.py Makefile
+	$$(CXX) -fpreprocessed -dD -E $$< 2>/dev/null | tools/enum2str.py elfo/$(1) $(2) > $$@
 
 clean::
 	rm -f src/_str_$(notdir $(1))

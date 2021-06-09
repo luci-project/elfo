@@ -25,6 +25,7 @@
 
 using namespace std;
 #endif
+
 #include "elf_dyn.hpp"
 
 #include "_str_const.hpp"

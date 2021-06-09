@@ -9,7 +9,7 @@
 #include <stdint.h>
 #endif
 
-#include "elf.hpp"
+#include <elfo/elf.hpp>
 
 #include "_str_const.hpp"
 #include "_str_ident.hpp"
