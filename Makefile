@@ -1,9 +1,15 @@
-DEPDIR := .deps
-CXXFLAGS = -MT $@ -MMD -MP -MF $(DEPDIR)/$@.d -Og -g -I include/
+VERBOSE = @
+
+SRCFOLDER = src
+BUILDDIR ?= .build
+
+CXXFLAGS ?= -Og -g
+CXXFLAGS += -I include/
 CXXFLAGS += -Wall -Wextra -Wno-switch -Wno-unused-variable -Wno-comment
-SOURCES := $(wildcard src/*.cpp)
+
+SOURCES := $(wildcard $(SRCFOLDER)/*.cpp)
 TARGETS := $(notdir $(SOURCES:%.cpp=%))
-DEPFILES := $(addprefix $(DEPDIR)/,$(addsuffix .d,$(TARGETS)))
+DEPFILES := $(addprefix $(BUILDDIR)/,$(addsuffix .d,$(TARGETS)))
 LDFLAGS :=
 
 ifdef DLH
@@ -15,26 +21,39 @@ endif
 
 all: $(TARGETS)
 
+$(BUILDDIR)/%.d: $(SRCFOLDER)/%.cpp  $(SRCFOLDER)/_str_const.hpp $(SRCFOLDER)/_str_ident.hpp $(BUILDDIR) $(MAKEFILE_LIST)
+	@echo "DEP		$<"
+	$(VERBOSE) $(CXX) $(CXXFLAGS) -MM -MP -MT $* -MF $@ $<
+
+%: $(SRCFOLDER)/%.cpp $(SRCFOLDER)/_str_const.hpp $(SRCFOLDER)/_str_ident.hpp $(MAKEFILE_LIST)
+	@echo "CXX		$@"
+	$(VERBOSE) $(CXX) $(CXXFLAGS) -o $@ $< $(LDFLAGS)
+
 define include_str_template =
-src/_str_$(notdir $(1)): include/elfo/$(1) tools/enum2str.py Makefile
-	$$(CXX) -fpreprocessed -dD -E $$< 2>/dev/null | tools/enum2str.py elfo/$(1) $(2) > $$@
+$$(SRCFOLDER)/_str_$(notdir $(1)): include/elfo/$(1) tools/enum2str.py $$(MAKEFILE_LIST)
+	@echo "GEN		$$@"
+	$$(VERBOSE) $$(CXX) -fpreprocessed -dD -E $$< 2>/dev/null | tools/enum2str.py elfo/$(1) $(2) > $$@
 
 clean::
-	rm -f src/_str_$(notdir $(1))
+	$$(VERBOSE) rm -f $$(SRCFOLDER)/_str_$(notdir $(1))
 endef
 
 $(eval $(call include_str_template,elf_def/const.hpp,ELF_Def Constants))
 $(eval $(call include_str_template,elf_def/ident.hpp,ELF_Def Identification))
 
-%: src/%.cpp src/_str_const.hpp src/_str_ident.hpp Makefile | $(DEPDIR)
-	$(CXX) $(CXXFLAGS) -o $@ $< $(LDFLAGS)
+clean::
+	$(VERBOSE) rm -f $(DEPFILES)
+	$(VERBOSE) test -d $(BUILDDIR) && rmdir $(BUILDDIR) || true
 
-$(DEPDIR): ; @mkdir -p $@
+mrproper:: clean
+	$(VERBOSE) rm -f $(TARGETS)
+
+$(BUILDDIR): ; @mkdir -p $@
 
 $(DEPFILES):
 
-clean::
-	rm -f $(DEPFILES)
-	rmdir $(DEPDIR) || true
+ifneq ($(MAKECMDGOALS),clean)
+-include $(DEPFILES)
+endif
 
-include $(wildcard $(DEPFILES))
+.PHONY: all clean mrproper

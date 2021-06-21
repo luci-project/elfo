@@ -1,4 +1,4 @@
-.deps
+.build
 src/_str_*.hpp
 dump
 lookup
