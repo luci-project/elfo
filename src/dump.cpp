@@ -496,7 +496,7 @@ int main(int argc, char * argv[]) {
 
 #if USE_DLH
 	size_t length;
-	char * buf = reinterpret_cast<char*>(File::contents(argv[1], length));
+	char * buf = File::contents(argv[1], length);
 	if (buf == nullptr)
 		return 1;
 #else
