@@ -28,14 +28,6 @@ class ELF : public ELF_Def::Structures<C> {
 		return reinterpret_cast<uintptr_t>(&header);
 	}
 
-	/*! \brief Pointer to ELF offset in memory
-	 * \param offset offset in ELF
-	 * \return pointer to element
-	 */
-	inline void * offset(uintptr_t offset) const {
-		return reinterpret_cast<void *>(start() + offset);
-	}
-
 	/*! \brief Accessor to wrap elements of a given data type
 	 * \tparam DT data type of element
 	 */
@@ -109,6 +101,11 @@ class ELF : public ELF_Def::Structures<C> {
 		}
 
 		/*! \brief Compare current iterator element */
+		bool operator==(const Iterator & other) const {
+			return accessor._data == other.accessor._data;
+		}
+
+		/*! \brief Compare current iterator element */
 		bool operator!=(const Iterator & other) const {
 			return accessor._data != other.accessor._data;
 		}
@@ -140,7 +137,7 @@ class ELF : public ELF_Def::Structures<C> {
 		}
 
 		/*! \brief Create new accessor pointing to specific element */
-		static A _accessor_value(const A & accessor, uintptr_t ptr) {
+		static A _accessor_value(const A & accessor, void * ptr) {
 			return _accessor_value(accessor, reinterpret_cast<V>(ptr));
 		}
 
@@ -178,19 +175,29 @@ class ELF : public ELF_Def::Structures<C> {
 
  public:
 	/*! \brief Array-like access to data with fixed element size using accessor
-	 * \tparam A class
+	 * \tparam A classd
 	 */
 	template <typename A>
 	class Array : public Accessors<A> {
+		/*! \brief Data type of element */
+		using V = decltype(A::_data);
+
 	 public:
 		/*! \brief Construct new Array access
 		 * \param accessor \ref Accessor template
 		 * \param ptr Pointer to first element
 		 * \param entries number of elements
 		 */
-		Array(const A & accessor, uintptr_t ptr, size_t entries) : Accessors<A>(this->_accessor_value(accessor, ptr), entries) {
+		Array(const A & accessor, void * ptr, size_t entries) : Accessors<A>(this->_accessor_value(accessor, ptr), entries) {
 			assert(this->_accessor.element_size() > 0);
 		}
+
+		/*! \brief Construct new Array access
+		 * \param accessor \ref Accessor template
+		 * \param ptr Pointer to first element
+		 * \param entries number of elements
+		 */
+		//Array(const A & accessor, void * ptr, size_t entries) : Array(accessor, reinterpret_cast<V>(ptr), entries) {}
 
 		/*! \brief Array-like access
 		 * \param idx index
@@ -236,7 +243,14 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \param begin Pointer to first element
 		 * \param end Indicator for end of list
 		 */
-		List(const A & accessor, const V begin, const V end) : Accessors<A>(this->_accessor_value(accessor, begin), end) {}
+		List(const A & accessor, void * begin, void * end) : Accessors<A>(this->_accessor_value(accessor, begin), reinterpret_cast<V>(end)) {}
+
+		/*! \brief Construct new List access
+		 * \param accessor \ref Accessor template
+		 * \param begin Pointer to first element
+		 * \param end Indicator for end of list
+		 */
+		//List(const A & accessor, void * begin, void * end) : List(accessor, reinterpret_cast<const V>(begin), reinterpret_cast<const V>(end)) {}
 
 		/*! \brief Array-like access
 		 * \note O(n) complexity!
@@ -244,7 +258,7 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \return Accessor for element
 		 */
 		A operator[](size_t idx) const {
-			for (auto & entry : *this)
+			for (const auto & entry : *this)
 				if (idx-- == 0)
 					return entry;
 			assert(false);
@@ -256,18 +270,16 @@ class ELF : public ELF_Def::Structures<C> {
 		 */
 		size_t count() const {
 			size_t entries = 0;
-			for (auto & entry : *this)
+			for (const auto & entry : *this)
 				entries++;
 			return entries;
 		}
 
 		/*! \brief Are there any elements in the array?
-		 * \return `true` if there is at least one element
+		 * \return `false` if there is at least one element
 		 */
 		bool empty() const {
-			for (auto & entry : *this)
-				return true;
-			return false;
+			return this->begin() == this->end();
 		}
 	};
 
@@ -332,8 +344,9 @@ class ELF : public ELF_Def::Structures<C> {
 		}
 	};
 
-	/*! \brief Forward declaration for Dynamic */
+	/*! \brief Forward declaration for Dynamic section */
 	struct Dynamic;
+	struct DynamicTable;
 
 	// Segments (Program header table)
 	struct Segment : Accessor<typename Def::Phdr> {
@@ -352,7 +365,7 @@ class ELF : public ELF_Def::Structures<C> {
 
 		/*! \brief Pointer to segment data */
 		void * data() const {
-			return this->_elf.offset(this->_data->p_offset);
+			return this->_elf.data(this->_data->p_offset);
 		}
 
 		/*! \brief Segment size (in ELF file)*/
@@ -397,22 +410,37 @@ class ELF : public ELF_Def::Structures<C> {
 
 		/*! \brief Get interpreter path */
 		const char * path() const {
-			return type() == Def::PT_INTERP ? reinterpret_cast<const char *>(this->_elf.offset(this->_data->p_offset)) : nullptr;
+			return type() == Def::PT_INTERP ? reinterpret_cast<const char *>(this->_elf.data(this->_data->p_offset)) : nullptr;
 		}
 
 		/*! \brief Get contents of dynamic secion */
 		Array<Dynamic> get_dynamic() const {
 			assert(type() == Def::PT_DYNAMIC);
-			// Calculate length
-			uintptr_t ptr = this->_elf.start() + offset();
-			typename Def::Dyn * dyn = reinterpret_cast<typename Def::Dyn *>(ptr);
-			size_t limit = (size() / sizeof(*dyn)) - 1;
 			size_t entries = 0;
 			uintptr_t strtaboff = 0;
+			void * dyn = this->_elf.data(offset());
+			load_dynamic(dyn, strtaboff, entries);
+			return Array<Dynamic>(Dynamic(this->_elf, strtaboff), dyn, entries);
+		}
+
+		/*! \brief Get contents of dynamic secion */
+		DynamicTable get_dynamic_table() const {
+			assert(type() == Def::PT_DYNAMIC);
+			size_t entries = 0;
+			uintptr_t strtaboff = 0;
+			load_dynamic(this->_elf.data(offset()), strtaboff, entries);
+			return DynamicTable(this->_elf, offset(), entries, strtaboff);
+		}
+
+	 private:
+		void load_dynamic(void * ptr, uintptr_t & strtaboff, size_t & entries) const {
+			typename Def::Dyn * dyn = reinterpret_cast<typename Def::Dyn *>(ptr);
+			size_t limit = (size() / sizeof(*dyn)) - 1;
+			entries = 0;
 			for (; entries < limit && dyn[entries].d_tag != Def::DT_NULL; entries++)
 				if (dyn[entries].d_tag == Def::DT_STRTAB)
 					strtaboff = dyn[entries].d_un.d_val;
-			return Array<Dynamic>(Dynamic(this->_elf, strtaboff), ptr, entries + 1);
+			entries++;
 		}
 	};
 
@@ -508,7 +536,6 @@ class ELF : public ELF_Def::Structures<C> {
 	 * Use hash if possible
 	 */
 	struct SymbolTable : public Array<Symbol> {
-		const ELF<C> & _elf;
 		const typename Def::shdr_type section_type;
 		const void * header;
 		const uint16_t * const versions;
@@ -526,18 +553,29 @@ class ELF : public ELF_Def::Structures<C> {
 		SymbolTable(const ELF<C> & elf, const Section & section, const Section & version_section) :
 		    SymbolTable(elf, (section.type() == Def::SHT_GNU_HASH) || (section.type() == Def::SHT_HASH), section, version_section) {}
 
+		/*! \brief Raw Symbol table constructor
+		 * \param elf This elf file
+		 * \param section_type Hash, Gnu Hash, Symbol or Dynamic Symbol Table?
+		 * \param header Pointer to hash header if applicable
+		 * \param symtaboff Offset in elf file to symbol table
+		 * \param symtabentries Number of entries in symbol table
+		 * \param versions Pointer versions array (for symbol table) if available (otherwise: `nullptr`)
+		 * \param strtaboff Offset in elf file to string table
+		 */
+		SymbolTable(const ELF<C> & elf, const typename Def::shdr_type section_type, const void * header, uintptr_t symtaboff, size_t symtabentries, const uint16_t * versions, uintptr_t strtaboff) : Array<Symbol>(Symbol(elf, strtaboff), elf.data(symtaboff), symtabentries), section_type(section_type), header(header), versions(versions) {}
+
 		/*! \brief Empty (non-existing) symbol table
 		 */
-		explicit SymbolTable(const ELF<C> & elf) : Array<Symbol>(Symbol(elf), 0, 0), _elf(elf), section_type(Def::SHT_NULL), header(nullptr), versions(nullptr) {}
+		explicit SymbolTable(const ELF<C> & elf) : Array<Symbol>(Symbol(elf), 0, 0), section_type(Def::SHT_NULL), header(nullptr), versions(nullptr) {}
 
 		/*! \brief Elf object */
 		const ELF<C> & elf() const {
-			return _elf;
+			return this->_accessor._elf;
 		}
 
 		/*! \brief Get symbol name by index */
 		inline const char * name(uint32_t idx) const {
-			return idx == Def::STN_UNDEF ? nullptr : _elf.string(this->_accessor.strtaboff, this->_accessor._data[idx].st_name);
+			return idx == Def::STN_UNDEF ? nullptr : elf().string(this->_accessor.strtaboff, this->_accessor._data[idx].st_name);
 		}
 
 		/*! \brief Get symbol version index by symbol index
@@ -619,8 +657,7 @@ class ELF : public ELF_Def::Structures<C> {
 
 		/*! \brief Helper constructor */
 		SymbolTable(const ELF<C> & elf, const typename Def::shdr_type section_type, void * header, const Section & symbol_section, const Section & version_section) :
-		    Array<Symbol>(Symbol(elf, symbol_section.link()), reinterpret_cast<uintptr_t>(symbol_section.data()), symbol_section.entries()),
-		    _elf(elf), section_type(section_type), header(header), versions(version_section.type() == Def::SHT_GNU_VERSYM ? version_section.get_versions() : nullptr) {
+		    SymbolTable(elf, section_type, header, symbol_section.offset(), symbol_section.entries(), version_section.type() == Def::SHT_GNU_VERSYM ? version_section.get_versions() : nullptr, elf.sections[symbol_section.link()].offset()) {
 			assert(section_type == Def::SHT_GNU_HASH || section_type == Def::SHT_HASH || section_type == Def::SHT_DYNSYM || section_type == Def::SHT_SYMTAB);
 			assert(section_type == Def::SHT_DYNSYM || section_type == Def::SHT_SYMTAB || header != nullptr);
 		}
@@ -751,7 +788,7 @@ class ELF : public ELF_Def::Structures<C> {
 
 		/*! \brief Target symbol */
 		Symbol symbol() const {
-			return Symbol(this->_elf, strtaboff, this->_elf.offset(symtaboff + this->_data->r_info.sym * sizeof(typename Def::Sym)));
+			return Symbol(this->_elf, strtaboff, this->_elf.data(symtaboff + this->_data->r_info.sym * sizeof(typename Def::Sym)));
 		}
 
 		/*! \brief Index of target symbol in corresponding symbol table */
@@ -819,7 +856,7 @@ class ELF : public ELF_Def::Structures<C> {
 
 		/*! \brief Target symbol */
 		Symbol symbol() const {
-			return Symbol(this->_elf, strtaboff, this->_elf.offset(symtaboff + this->_data->r_info.sym * sizeof(typename Def::Sym)));
+			return Symbol(this->_elf, strtaboff, this->_elf.data(symtaboff + this->_data->r_info.sym * sizeof(typename Def::Sym)));
 		}
 
 		/*! \brief Index of target symbol in corresponding symbol table */
@@ -897,7 +934,7 @@ class ELF : public ELF_Def::Structures<C> {
 
 		/*! \brief Target symbol */
 		Symbol symbol() const {
-			return Symbol(this->_elf, strtaboff, this->_elf.offset(symtaboff + symbol_index() * sizeof(typename Def::Sym)));
+			return Symbol(this->_elf, strtaboff, this->_elf.data(symtaboff + symbol_index() * sizeof(typename Def::Sym)));
 		}
 
 		/*! \brief Index of target symbol in corresponding symbol table */
@@ -986,50 +1023,9 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \note Availability depending on tag!
 		 */
 		const char * string() const {
-			return reinterpret_cast<const char *>(this->_elf.offset(strtaboff + this->_data->d_un.d_val));
+			return reinterpret_cast<const char *>(this->_elf.data(strtaboff + this->_data->d_un.d_val));
 		}
 	};
-
-	/*! \brief Helper to access the Dynamic Section */
-	/* TODO
-	struct DynamicTable : public Array<Dynamic> {
-		const ELF<C> & _elf;
-
-		// get relocation
-		// get symboltable
-		// get Verdef
-		// get flags, rpath, runpath, PREINIT_ARRAY
-		// operator[Def::dyn_tag]
-		// Iterator for soname, INIT_ARRAY, FINI_ARRAY, ...
-
-
-			Array<Relocation> get_relocations() const {
-				uintptr_t jmprel = 0;  // Address of PLT relocation table
-				uintptr_t pltrel = Elf::DT_NULL;  // Type of PLT relocation table (REL or RELA)
-				size_t pltrelsz = 0;   // Size of PLT relocation table (and, hence, GOT)
-
-				for (auto &dyn: dynamic) {
-					switch (dyn.tag()) {
-						case Elf::DT_JMPREL:
-							jmprel = dyn.value();
-							break;
-						case Elf::DT_PLTREL:
-							pltrel = dyn.value();
-							break;
-						case Elf::DT_PLTRELSZ:
-							pltrelsz = dyn.value();
-							break;
-						default:
-							continue;
-					}
-				}
-
-				auto section = this->section_by_offset(jmprel);
-				assert((jmprel == 0 && pltrel == Elf::DT_NULL) || section.size() == pltrelsz);
-				return section.get_relocations();
-			}
-	};
-	*/
 
 	/*! \brief GNU Note entry */
 	struct Note : Accessor<typename Def::Nhdr> {
@@ -1119,7 +1115,7 @@ class ELF : public ELF_Def::Structures<C> {
 			/*! \brief Definition name */
 			const char * name() const {
 				assert(strtaboff != 0);
-				return reinterpret_cast<const char *>(this->_elf.offset(strtaboff + this->_data->vda_name));
+				return reinterpret_cast<const char *>(this->_elf.data(strtaboff + this->_data->vda_name));
 			}
 
 		 private:
@@ -1217,7 +1213,6 @@ class ELF : public ELF_Def::Structures<C> {
 
 	/*! \brief Version needed entry */
 	struct VersionNeeded : Accessor<typename Def::Verneed> {
-
 		/*! \brief Auxiliary information for version needed */
 		struct Auxiliary : Accessor<typename Def::Vernaux> {
 			/*! \brief String table offset */
@@ -1312,7 +1307,7 @@ class ELF : public ELF_Def::Structures<C> {
 		/*! \brief filename for this dependency */
 		const char * file() const {
 			assert(strtaboff != 0);
-			return reinterpret_cast<const char *>(this->_elf.offset(strtaboff + this->_data->vn_file));
+			return reinterpret_cast<const char *>(this->_elf.data(strtaboff + this->_data->vn_file));
 		}
 
 		/*! \brief List of version dependency auxiliary information */
@@ -1325,6 +1320,355 @@ class ELF : public ELF_Def::Structures<C> {
 		/*! \brief Number of version dependency auxiliary information */
 		uint16_t auxiliaries() const {
 			return this->_data->vn_cnt;
+		}
+	};
+
+	/*! \brief Helper to access the Dynamic Section */
+	struct DynamicTable : public Array<Dynamic> {
+		/*! \brief Dynamic table
+		 * similar to dynamic array, but offering easy access functions to its contents
+		 */
+		DynamicTable(const ELF<C> & elf, const Section & section) : DynamicTable(elf, section.data(), section.dynamic_entries(), elf.sections[section.link()].offset()) {
+			assert(section.type() == Def::SHT_DYNAMIC);
+			assert(elf.sections[section.link()].type() == Def::SHT_STRTAB);
+		}
+
+		/*! \brief Raw dynamic table
+		 * \param elf Pointer to elf
+		 * \param dyntaboff Offset to dynamic table
+		 * \param dyntabentries Number of entries in dynamic table
+		 * \param strtaboff Offset to associated string table
+		 */
+		DynamicTable(const ELF<C> & elf, uintptr_t dyntaboff, size_t dyntabentries, uintptr_t strtaboff) : Array<Dynamic>(Dynamic(elf, strtaboff), elf.data(dyntaboff), dyntabentries) {}
+
+		/*! \brief Empty (non-existing) dynamic table
+		 */
+		explicit DynamicTable(const ELF<C> & elf) : Array<Dynamic>(Dynamic(elf), 0, 0) {}
+
+
+		// get symboltable
+		// get flags, rpath, runpath, PREINIT_ARRAY
+		// operator[Def::dyn_tag]
+		// Iterator for soname, INIT_ARRAY, FINI_ARRAY, ...
+
+		const ELF<C> & elf() const {
+			return this->_accessor._elf;
+		}
+
+		/*! \brief Get contents of symbol table section as \ref Array of \ref Symbol elements  */
+		Array<Symbol> get_symbols() const {
+			uintptr_t strtab = 0;
+			uintptr_t symtab = 0;
+			size_t symtabnum = 0;
+
+			for (const auto &dyn: *this) {
+				switch (dyn.tag()) {
+					case Def::DT_STRTAB:
+						strtab = dyn.value();
+						break;
+					case Def::DT_SYMTAB:
+						symtab = dyn.value();
+						break;
+					case Def::DT_SYMENT:
+						assert(dyn.value() == sizeof(typename Def::Sym));
+						break;
+					case Def::DT_HASH:
+						symtabnum = reinterpret_cast<const ELF_Def::Hash_header*>(elf().data(dyn.value()))->nchain;
+						break;
+					case Def::DT_GNU_HASH:
+						symtabnum = gnu_hash_size(reinterpret_cast<const ELF_Def::GnuHash_header*>(elf().data(dyn.value())));
+						break;
+				default:
+						continue;
+				}
+			}
+			assert(symtab != 0 && strtab != 0);
+			return Array<Symbol>(Symbol(elf(), strtab), elf().data(symtab), symtabnum);
+		}
+
+		/*! \brief Get contents of symbol table section
+		 */
+		SymbolTable get_symbol_table() const {
+			uintptr_t strtab = 0;
+			uintptr_t symtab = 0;
+			size_t symtabnum = 0;
+			typename Def::shdr_type section_type = Def::SHT_DYNSYM;
+			void * header = nullptr;
+			const uint16_t * versions = nullptr;
+
+			for (const auto &dyn: *this) {
+				switch (dyn.tag()) {
+					case Def::DT_STRTAB:
+						strtab = dyn.value();
+						break;
+					case Def::DT_SYMTAB:
+						symtab = dyn.value();
+						break;
+					case Def::DT_SYMENT:
+						assert(dyn.value() == sizeof(typename Def::Sym));
+						break;
+					case Def::DT_VERSYM:
+						versions = reinterpret_cast<const uint16_t *>(elf().data(dyn.value()));
+						break;
+					case Def::DT_HASH:
+						// Gnu hash is superior
+						if (section_type == Def::SHT_DYNSYM) {
+							section_type = Def::SHT_HASH;
+							header = elf().data(dyn.value());
+							symtabnum = reinterpret_cast<const ELF_Def::Hash_header*>(header)->nchain;
+						}
+						break;
+					case Def::DT_GNU_HASH:
+						section_type = Def::DT_GNU_HASH;
+						header = elf().data(dyn.value());
+						symtabnum = gnu_hash_size(reinterpret_cast<const ELF_Def::GnuHash_header*>(header));
+						break;
+					default:
+						continue;
+				}
+			}
+			assert(symtab != 0 && strtab != 0);
+			assert(header != nullptr);  // hash table is mandatory
+			return SymbolTable(elf(), section_type, header, symtab, symtabnum, versions, strtab);
+		}
+
+		/*! \brief Get contents of version definition section as \ref List of \ref VersionDefinition elements  */
+		List<VersionDefinition> get_version_definition() const {
+			uintptr_t strtab = 0;
+			uintptr_t verdef = 0;
+			uintptr_t verdefnum = 0;
+
+			for (const auto & dyn : *this) {
+				switch (dyn.tag()) {
+					case Def::DT_STRTAB:
+						strtab = dyn.value();
+						break;
+					case Def::DT_VERDEF:
+						verdef = dyn.value();
+						break;
+					case Def::DT_VERDEFNUM:
+						verdefnum = dyn.value();
+						break;
+					default:
+						continue;
+				}
+			}
+
+			if (verdef == 0) {
+				assert(verdefnum == 0);
+				return List<VersionDefinition>(VersionDefinition(elf()), nullptr, nullptr);
+			} else {
+				const auto & l = List<VersionDefinition>(VersionDefinition(elf(), strtab), elf().data(verdef), nullptr);
+				assert(l.count() == verdefnum);
+				return l;
+			}
+		}
+
+		/*! \brief Get contents of version needed section as \ref List of \ref VersionNeeded elements  */
+		List<VersionNeeded> get_version_needed() const {
+			uintptr_t strtab = 0;
+			uintptr_t verneed = 0;
+			uintptr_t verneednum = 0;
+
+			for (const auto & dyn : *this) {
+				switch (dyn.tag()) {
+					case Def::DT_STRTAB:
+						strtab = dyn.value();
+						break;
+					case Def::DT_VERNEED:
+						verneed = dyn.value();
+						break;
+					case Def::DT_VERNEEDNUM:
+						verneednum = dyn.value();
+						break;
+					default:
+						continue;
+				}
+			}
+
+			if (verneed == 0) {
+				assert(verneednum == 0);
+				return List<VersionNeeded>(VersionNeeded(elf()), nullptr, nullptr);
+			} else {
+				const auto & l = List<VersionNeeded>(VersionNeeded(elf(), strtab), elf().data(verneed), nullptr);
+				assert(l.count() == verneednum);
+				return l;
+			}
+		}
+
+		/*! \brief Get relocations in dynamic section (excluding procedure linkage table) */
+		Array<Relocation> get_relocations() const {
+			uintptr_t strtab = 0;             // Offset of string table
+			uintptr_t symtab = 0;             // Offset of symbol table
+			void * rel = nullptr;             // Pointer to thel PLT relocation table
+			uintptr_t type = Def::DT_NULL;    // Type of relocation table (REL or RELA)
+			size_t relsz = 0;                 // Size of relocation table
+
+			for (const auto &dyn: *this) {
+				switch (dyn.tag()) {
+					case Def::DT_STRTAB:
+						strtab = dyn.value();
+						break;
+					case Def::DT_SYMTAB:
+						symtab = dyn.value();
+						break;
+					case Def::DT_SYMENT:
+						assert(dyn.value() == sizeof(typename Def::Sym));
+						break;
+					case Def::DT_REL:
+						assert(type == Def::DT_NULL || type == Def::DT_REL);
+						type = Def::DT_REL;
+						rel = this->_accessor._elf.data(dyn.value());
+						break;
+					case Def::DT_RELA:
+						assert(type == Def::DT_NULL || type == Def::DT_RELA);
+						type = Def::DT_RELA;
+						rel = this->_accessor._elf.data(dyn.value());
+						break;
+					case Def::DT_RELSZ:
+						assert(type == Def::DT_NULL || type == Def::DT_REL);
+						type = Def::DT_REL;
+						relsz = dyn.value();
+						break;
+					case Def::DT_RELASZ:
+						assert(type == Def::DT_NULL || type == Def::DT_RELA);
+						type = Def::DT_RELA;
+						relsz = dyn.value();
+						break;
+					case Def::DT_RELENT:
+						assert(type == Def::DT_NULL || type == Def::DT_REL);
+						type = Def::DT_REL;
+						assert(dyn.value() == sizeof(typename Def::Rel));
+						break;
+					case Def::DT_RELAENT:
+						assert(type == Def::DT_NULL || type == Def::DT_RELA);
+						type = Def::DT_RELA;
+						assert(dyn.value() == sizeof(typename Def::Rela));
+						break;
+					default:
+						continue;
+				}
+			}
+
+			if (type == Def::DT_NULL) {
+				assert(rel == nullptr && relsz == 0);
+				return Array<Relocation>(Relocation(elf()), nullptr, 0);
+			} else {
+				assert(rel != nullptr && symtab != 0 && strtab != 0);
+				assert(type == Def::DT_REL || type == Def::DT_RELA);
+				return Array<Relocation>(Relocation(elf(), symtab, strtab, type == Def::DT_RELA), elf().data(rel), relsz);
+			}
+		}
+
+		/*! \brief Get relocations for the procedure linkage table */
+		Array<Relocation> get_relocations_plt() const {
+			uintptr_t strtab = 0;             // Offset of string table
+			uintptr_t symtab = 0;             // Offset of symbol table
+			void * jmprel = nullptr;          // Pointer to thel PLT relocation table
+			typename Def::dyn_tag pltrel = Def::DT_NULL;  // Type of PLT relocation table (REL or RELA)
+			size_t pltrelsz = 0;              // Size of PLT relocation table (and, hence, GOT)
+
+			for (const auto &dyn: *this) {
+				switch (dyn.tag()) {
+					case Def::DT_STRTAB:
+						strtab = dyn.value();
+						break;
+					case Def::DT_SYMTAB:
+						symtab = dyn.value();
+						break;
+					case Def::DT_JMPREL:
+						jmprel = elf().data(dyn.value());
+						break;
+					case Def::DT_PLTREL:
+						pltrel = static_cast<typename Def::dyn_tag>(dyn.value());
+						break;
+					case Def::DT_PLTRELSZ:
+						pltrelsz = dyn.value();
+						break;
+					default:
+						continue;
+				}
+			}
+
+			if (pltrel == Def::DT_NULL) {
+				assert(jmprel == nullptr && pltrelsz == 0);
+				return Array<Relocation>(Relocation(elf()), nullptr, 0);
+			} else {
+				assert(jmprel != nullptr && symtab != 0 && strtab != 0);
+				assert(pltrel == Def::DT_REL || pltrel == Def::DT_RELA);
+				return Array<Relocation>(Relocation(elf(), symtab, strtab, pltrel == Def::DT_RELA), this->_accessor._elf.data(jmprel), pltrelsz);
+			}
+		}
+
+		/*! \brief Get initialization function pointer */
+		void (*get_init_function())() const {
+			for (const auto & dyn : *this)
+				if (dyn.tag() == Def::DT_INIT)
+					return reinterpret_cast<void(*)()>(elf().data(dyn.value()));
+			return nullptr;
+		}
+
+		/*! \brief Get deinitialization function pointer */
+		void (*get_fini_function())() const {
+			for (const auto & dyn : *this)
+				if (dyn.tag() == Def::DT_FINI)
+					return reinterpret_cast<void(*)()>(elf().data(dyn.value()));
+			return nullptr;
+		}
+
+		/*! \brief Contents of the global offset table */
+		const Array<void*> get_global_offset_table() const {
+			void * got = nullptr;
+			size_t size = 0;
+
+			for (const auto & dyn : *this) {
+				switch (dyn.tag()) {
+					case Def::DT_PLTGOT:
+						got = this->_accessor._elf.data(dyn.value());
+						break;
+					case Def::DT_PLTRELSZ:
+						size = dyn.value();
+						break;
+					default:
+						continue;
+				}
+			}
+
+			return Array<void*>(Accessor<void*>(elf()), got, size);
+		}
+
+		/*! \brief Pointer to the global offset table */
+		const void** get_global_offset_table_pointer() const {
+			for (const auto & dyn : *this)
+				if (dyn.tag() == Def::DT_PLTGOT)
+					return reinterpret_cast<void**>(elf().data(dyn.value()));
+			return nullptr;
+		}
+
+		/*! \brief Access (first) dynamic entry
+		 * \param tag dynamic tag to search
+		 * \return Dynamic entry
+		 */
+		inline Dynamic operator[](typename Def::dyn_tag tag) const {
+			for (const auto & dyn : *this)
+				if (dyn.tag() == tag)
+					return dyn;
+			return Dynamic(elf());  // 0 == UNDEF
+		}
+
+	 private:
+		/*! \brief Helper to determine the size of entries in gnu hash table */
+		static size_t gnu_hash_size(const ELF_Def::GnuHash_header* header) {
+			const elfptr_t * bloom = reinterpret_cast<const elfptr_t *>(header + 1);
+			const uint32_t * buckets = reinterpret_cast<const uint32_t *>(bloom + header->bloom_size);
+			size_t n = 0;
+			for (uint32_t i = 0; i < header->nbuckets; i++)
+				if (buckets[i] > n)
+					n = buckets[i];
+			n++;
+			for (const uint32_t * hashval = buckets + header->nbuckets - header->symoffset; (hashval[n] & 1) != 0; n++) {}
+
+			return n;
 		}
 	};
 
@@ -1406,9 +1750,12 @@ class ELF : public ELF_Def::Structures<C> {
 			return this->_data->sh_offset;
 		}
 
-		/*! \brief Pointer to dection contents */
-		void * data() const {
-			return this->_elf.offset(this->_data->sh_offset);
+		/*! \brief Pointer to section contents
+		 * \param displacement displacement in memory
+		 * \return pointer to data
+		 */
+		void * data(uintptr_t displacement = 0) const {
+			return this->_elf.data(this->_data->sh_offset + displacement);
 		}
 
 		/*! \brief Section size in bytes */
@@ -1490,20 +1837,22 @@ class ELF : public ELF_Def::Structures<C> {
 		/*! \brief Get contents of dynamic secion */
 		Array<Dynamic> get_dynamic() const {
 			assert(type() == Def::SHT_DYNAMIC);
-			// Calculate length
-			uintptr_t ptr = this->_elf.start() + offset();
-			typename Def::Dyn * dyn = reinterpret_cast<typename Def::Dyn *>(ptr);
-			assert(entry_size() == sizeof(*dyn));
-			size_t limit = this->entries() - 1;
-			size_t entries = 0;
-			for (; entries < limit && dyn[entries].d_tag != Def::DT_NULL; entries++) {}
-			return Array<Dynamic>(Dynamic(this->_elf, link()), ptr, entries + 1);
+			return Array<Dynamic>(Dynamic(this->_elf, link()), data(), dynamic_entries());
+		}
+
+		/*! \brief Get contents of dynamic secion */
+		DynamicTable get_dynamic_table() const {
+			return DynamicTable(this->_elf, *this);
 		}
 
 		/*! \brief Get contents of relocation section */
 		Array<Relocation> get_relocations() const {
-			assert(type() == Def::SHT_REL || type() == Def::SHT_RELA);
-			return Array<Relocation>(Relocation(this->_elf, link(), type() == Def::SHT_RELA), this->_elf.start() + offset(), entries());
+			if (type() == Def::SHT_NULL) {
+				return Array<Relocation>(Relocation(this->_elf), nullptr, 0);
+			} else {
+				assert(type() == Def::SHT_REL || type() == Def::SHT_RELA);
+				return Array<Relocation>(Relocation(this->_elf, link(), type() == Def::SHT_RELA), data(), entries());
+			}
 		}
 
 		/*! \brief Array with elements
@@ -1513,10 +1862,10 @@ class ELF : public ELF_Def::Structures<C> {
 		template<typename ACCESSOR>
 		Array<ACCESSOR> get_array() const {
 			if (type() == Def::SHT_NULL) {
-				return Array<ACCESSOR>(ACCESSOR(this->_elf), 0, 0);
+				return Array<ACCESSOR>(ACCESSOR(this->_elf), nullptr, 0);
 			} else {
 				assert(entry_size() == ACCESSOR(this->_elf, link()).element_size());
-				return Array<ACCESSOR>(ACCESSOR(this->_elf, link()), this->_elf.start() + offset(), entries());
+				return Array<ACCESSOR>(ACCESSOR(this->_elf, link()), data(), entries());
 			}
 		}
 
@@ -1531,11 +1880,20 @@ class ELF : public ELF_Def::Structures<C> {
 			if (type() == Def::SHT_NULL) {
 				return List<ACCESSOR>(ACCESSOR(this->_elf), nullptr, nullptr);
 			} else {
-				using V = decltype(ACCESSOR::_data);
 				assert(entry_size() == 0);
-				uintptr_t begin_adr = this->_elf.start() + offset();
-				return List<ACCESSOR>(ACCESSOR(this->_elf, link()), reinterpret_cast<const V>(begin_adr), last_is_nullptr ? nullptr : reinterpret_cast<const V>(begin_adr + size()));
+				return List<ACCESSOR>(ACCESSOR(this->_elf, link()), data(), last_is_nullptr ? nullptr : this->_elf.data(offset() + size()));
 			}
+		}
+
+	 private:
+		friend struct DynamicTable;
+		size_t dynamic_entries() const {
+			typename Def::Dyn * dyn = reinterpret_cast<typename Def::Dyn *>(data());
+			assert(entry_size() == sizeof(*dyn));
+			size_t limit = this->entries() - 1;
+			size_t entries = 0;
+			for (; entries < limit && dyn[entries].d_tag != Def::DT_NULL; entries++) {}
+			return entries + 1;
 		}
 	};
 
@@ -1554,8 +1912,8 @@ class ELF : public ELF_Def::Structures<C> {
 	 */
 	ELF(uintptr_t address)
 	 :  header(*reinterpret_cast<Header*>(address)),
-	    segments(Segment(*this), address + header.e_phoff, header.e_phnum),
-	    sections(Section(*this), address + header.e_shoff, header.e_shnum) {
+	    segments(Segment(*this), data(header.e_phoff), header.e_phnum),
+	    sections(Section(*this), data(header.e_shoff), header.e_shnum) {
 		assert(address != 0);
 		assert(sizeof(Header) == header.e_ehsize);
 		assert(sizeof(typename Def::Phdr) == header.e_phentsize);
@@ -1578,6 +1936,14 @@ class ELF : public ELF_Def::Structures<C> {
 		return C;
 	}
 
+	/*! \brief Pointer to ELF data in memory
+	 * \param displacement offset in ELF
+	 * \return pointer to data
+	 */
+	inline void * data(uintptr_t displacement) const {
+		return reinterpret_cast<void *>(start() + displacement);
+	}
+
 	/*! \brief Check if this file seems to be valid (using file size and offsets)
 	 * \param file_size Length of memory mapped file
 	 */
@@ -1589,35 +1955,51 @@ class ELF : public ELF_Def::Structures<C> {
 		 || file_size < header.e_shoff + header.e_shentsize * header.e_shnum)
 			return false;
 
-		for (auto & section : sections)
+		for (const auto & section : sections)
 			if (section.type() != Def::SHT_NOBITS && file_size < section.offset() + section.size())
 				return false;
 
-		for (auto & segment : segments)
+		for (const auto & segment : segments)
 			if (file_size < segment.offset() + segment.size())
 				return false;
 
 		return true;
 	}
 
+	/*! \brief Access dynamic section */
+	DynamicTable dynamic() const {
+		for (const auto &s : segments)
+			if (s.type() == Def::PT_DYNAMIC)
+				return s.get_dynamic_table();
+		return DynamicTable(*this);
+	}
+
+	/*! \brief Interpreter */
+	const char * interpreter() const {
+		for (const auto &s : segments)
+			if (s.type() == Def::PT_INTERP)
+				return s.path();
+		return nullptr;
+	}
+
  //protected:
 	template<typename ACCESSOR>
 	Array<ACCESSOR> get(const ACCESSOR & t, uintptr_t offset, size_t size) const {
-		return Array<ACCESSOR>(t, offset, size);
+		return Array<ACCESSOR>(t, data(offset), size);
 	}
 
 	template<typename ACCESSOR>
 	Array<ACCESSOR> get() const {
-		return Array<ACCESSOR>(ACCESSOR(*this), 0, 0);
+		return Array<ACCESSOR>(ACCESSOR(*this), nullptr, 0);
 	}
 
 	/*! \brief Get section by offset
 	 * \note required by \ref Dynamic
 	 * \param offset relative address of start of section
-	 * \return Section or pointer to NULL section if not found
+	 * \return Section
 	 */
 	const Section section_by_offset(uintptr_t offset) const {
-		for (auto &s : sections)
+		for (const auto &s : sections)
 			if (s.offset() == offset)
 				return s;
 			else if (s.offset() > offset)
@@ -1630,7 +2012,7 @@ class ELF : public ELF_Def::Structures<C> {
 	 * \return Section or pointer to NULL section if not found
 	 */
 	const Section section_by_virt_addr(uintptr_t addr) const {
-		for (auto &s : sections)
+		for (const auto &s : sections)
 			if (s.virt_addr() == addr)
 				return s;
 			else if (s.virt_addr() > addr)
@@ -1648,7 +2030,7 @@ class ELF : public ELF_Def::Structures<C> {
 		assert(section.entries() > index);
 		const auto strtab = section.link();
 		assert(strtab.type() == Def::SHT_STRTAB);
-		return Symbol(*this, strtab.offset(), offset(section.offset() + index * sizeof(typename Def::Sym)));
+		return Symbol(*this, strtab, section.data(index * sizeof(typename Def::Sym)));
 	}
 
 	/*! \brief Get symbol
@@ -1666,7 +2048,7 @@ class ELF : public ELF_Def::Structures<C> {
 	 * \return String
 	 */
 	const char * string(uintptr_t section_offset, uint32_t offset) const {
-		return reinterpret_cast<const char *>(this->offset(section_offset + offset));
+		return reinterpret_cast<const char *>(data(section_offset + offset));
 	}
 
 	/*! \brief Get string
@@ -1676,7 +2058,7 @@ class ELF : public ELF_Def::Structures<C> {
 	 */
 	const char * string(const Section & section, uint32_t offset) const {
 		assert(section.type() == Def::SHT_STRTAB);
-		return string(section.offset(), offset);
+		return reinterpret_cast<const char *>(section.data(offset));
 	}
 
 	/*! \brief Get string
@@ -1702,7 +2084,7 @@ class ELF : public ELF_Def::Structures<C> {
 			size = ph_size;
 
 		// Segments (in Program Header Table)
-		for (auto & s : segments) {
+		for (const auto & s : segments) {
 			if (only_allocated && s.type() != Def::PT_LOAD)
 				continue;
 			size_t seg_size = s.offset() + s.size();
@@ -1718,7 +2100,7 @@ class ELF : public ELF_Def::Structures<C> {
 				size = sh_size;
 
 			// Sections
-			for (auto & s : sections) {
+			for (const auto & s : sections) {
 				size_t sec_size = s.offset() + s.size();
 				if (sec_size > size)
 					size = sec_size;
