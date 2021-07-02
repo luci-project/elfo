@@ -428,8 +428,10 @@ class ELF : public ELF_Def::Structures<C> {
 			assert(type() == Def::PT_DYNAMIC);
 			size_t entries = 0;
 			uintptr_t strtaboff = 0;
-			uintptr_t delta = 0;
-			void * dyn = load_dynamic(offset(), strtaboff, entries, delta);
+			bool translate_address = false;
+			void * dyn = load_dynamic(offset(), strtaboff, entries, translate_address);
+			if (translate_address)
+				strtaboff = translate(this->_elf, strtaboff);
 			return Array<Dynamic>(Dynamic(this->_elf, strtaboff), dyn, entries);
 		}
 
@@ -438,13 +440,13 @@ class ELF : public ELF_Def::Structures<C> {
 			assert(type() == Def::PT_DYNAMIC);
 			size_t entries = 0;
 			uintptr_t strtaboff = 0;
-			uintptr_t delta = 0;
-			load_dynamic(offset(), strtaboff, entries, delta);
-			return DynamicTable(this->_elf, offset(), entries, strtaboff, delta);
+			bool translate_address = false;
+			load_dynamic(offset(), strtaboff, entries, translate_address);
+			return DynamicTable(this->_elf, offset(), entries, strtaboff, translate_address);
 		}
 
 	 private:
-		void * load_dynamic(uintptr_t offset, uintptr_t & strtaboff, size_t & entries, uintptr_t & delta) const {
+		void * load_dynamic(uintptr_t offset, uintptr_t & strtaboff, size_t & entries, bool & translate_address) const {
 			typename Def::Dyn * dyn = reinterpret_cast<typename Def::Dyn *>(this->_elf.data(offset));
 			size_t limit = (size() / sizeof(*dyn)) - 1;
 			entries = 0;
@@ -453,17 +455,7 @@ class ELF : public ELF_Def::Structures<C> {
 					strtaboff = dyn[entries].d_un.d_val;
 			entries++;
 
-			if (reinterpret_cast<uintptr_t>(dyn) != virt_addr()) {
-				// This allows parsing dynamic table on executables (with absolute addressing)
-				// However, this is only valid if all contents in the ELF file have the same memory offset.
-				// A better solution would check the PT_LOAD segments for each address, but this is would be more expensive...
-				const auto & s = this->_elf.segments[0];
-				assert(s.offset() <= s.virt_addr());
-				delta = s.virt_addr() - s.offset();
-				assert(delta < strtaboff);
-				strtaboff -= delta;
-			}
-
+			translate_address = reinterpret_cast<uintptr_t>(dyn) != virt_addr();
 			return dyn;
 		}
 	};
@@ -1360,7 +1352,7 @@ class ELF : public ELF_Def::Structures<C> {
 	/*! \brief Helper to access the Dynamic Section */
 	struct DynamicTable : public Array<Dynamic> {
 		/*! \brief Difference from virtual memory and file offset (to calculate file relative offset) */
-		const uintptr_t delta;
+		const bool translate_address;
 
 		/*! \brief Filter list entries */
 		struct Entry : public Dynamic {
@@ -1398,7 +1390,7 @@ class ELF : public ELF_Def::Structures<C> {
 		/*! \brief Dynamic table
 		 * similar to dynamic array, but offering easy access functions to its contents
 		 */
-		DynamicTable(const ELF<C> & elf, const Section & section) : DynamicTable(elf, section.data(), section.dynamic_entries(), elf.sections[section.link()].offset(), section.virt_addr() - section.offset()) {
+		DynamicTable(const ELF<C> & elf, const Section & section) : DynamicTable(elf, section.data(), section.dynamic_entries(), elf.sections[section.link()].offset(), section.virt_addr() != section.offset()) {
 			assert(section.type() == Def::SHT_DYNAMIC);
 			assert(elf.sections[section.link()].type() == Def::SHT_STRTAB);
 		}
@@ -1408,13 +1400,13 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \param dyntaboff Offset to dynamic table
 		 * \param dyntabentries Number of entries in dynamic table
 		 * \param strtaboff Offset to associated string table
-		 * \param delta Difference between virtual address (used in dynamic) and file offset
+		 * \param translate_address Difference between virtual address (used in dynamic) and file offset needs fix of offset
 		 */
-		DynamicTable(const ELF<C> & elf, uintptr_t dyntaboff, size_t dyntabentries, uintptr_t strtaboff, uintptr_t delta) : Array<Dynamic>(Dynamic(elf, strtaboff), elf.data(dyntaboff), dyntabentries), delta(delta) {}
+		DynamicTable(const ELF<C> & elf, uintptr_t dyntaboff, size_t dyntabentries, uintptr_t strtaboff, bool translate_address) : Array<Dynamic>(Dynamic(elf, translate_address ? translate(elf, strtaboff): strtaboff), elf.data(dyntaboff), dyntabentries), translate_address(translate_address) {}
 
 		/*! \brief Empty (non-existing) dynamic table
 		 */
-		explicit DynamicTable(const ELF<C> & elf) : Array<Dynamic>(Dynamic(elf), 0, 0), delta(0) {}
+		explicit DynamicTable(const ELF<C> & elf) : Array<Dynamic>(Dynamic(elf), 0, 0), translate_address(false) {}
 
 		/*! \brief Get the corresponding ELF */
 		const ELF<C> & elf() const {
@@ -1455,23 +1447,19 @@ class ELF : public ELF_Def::Structures<C> {
 			for (const auto &dyn: *this) {
 				switch (dyn.tag()) {
 					case Def::DT_STRTAB:
-						assert(dyn.value() > delta);
-						strtab = dyn.value() - delta;
+						strtab = fix_offset(dyn.value());;
 						break;
 					case Def::DT_SYMTAB:
-						assert(dyn.value() > delta);
-						symtab = dyn.value() - delta;
+						symtab = fix_offset(dyn.value());
 						break;
 					case Def::DT_SYMENT:
 						assert(dyn.value() == sizeof(typename Def::Sym));
 						break;
 					case Def::DT_HASH:
-						assert(dyn.value() > delta);
-						symtabnum = reinterpret_cast<const ELF_Def::Hash_header*>(elf().data(dyn.value() - delta))->nchain;
+						symtabnum = reinterpret_cast<const ELF_Def::Hash_header*>(data(dyn.value()))->nchain;
 						break;
 					case Def::DT_GNU_HASH:
-						assert(dyn.value() > delta);
-						symtabnum = gnu_hash_size(reinterpret_cast<const ELF_Def::GnuHash_header*>(elf().data(dyn.value() - delta)));
+						symtabnum = gnu_hash_size(reinterpret_cast<const ELF_Def::GnuHash_header*>(data(dyn.value())));
 						break;
 				default:
 						continue;
@@ -1494,33 +1482,28 @@ class ELF : public ELF_Def::Structures<C> {
 			for (const auto &dyn: *this) {
 				switch (dyn.tag()) {
 					case Def::DT_STRTAB:
-						assert(dyn.value() > delta);
-						strtab = dyn.value() - delta;
+						strtab = fix_offset(dyn.value());
 						break;
 					case Def::DT_SYMTAB:
-						assert(dyn.value() > delta);
-						symtab = dyn.value() - delta;
+						symtab = fix_offset(dyn.value());
 						break;
 					case Def::DT_SYMENT:
 						assert(dyn.value() == sizeof(typename Def::Sym));
 						break;
 					case Def::DT_VERSYM:
-						assert(dyn.value() > delta);
-						versions = reinterpret_cast<const uint16_t *>(elf().data(dyn.value() - delta));
+						versions = reinterpret_cast<const uint16_t *>(data(dyn.value()));
 						break;
 					case Def::DT_HASH:
 						// Gnu hash is superior
 						if (section_type == Def::SHT_DYNSYM) {
 							section_type = Def::SHT_HASH;
-							assert(dyn.value() > delta);
-							header = elf().data(dyn.value() - delta);
+							header = data(dyn.value());
 							symtabnum = reinterpret_cast<const ELF_Def::Hash_header*>(header)->nchain;
 						}
 						break;
 					case Def::DT_GNU_HASH:
 						section_type = Def::DT_GNU_HASH;
-						assert(dyn.value() > delta);
-						header = elf().data(dyn.value() - delta);
+						header = data(dyn.value());
 						symtabnum = gnu_hash_size(reinterpret_cast<const ELF_Def::GnuHash_header*>(header));
 						break;
 					default:
@@ -1541,12 +1524,10 @@ class ELF : public ELF_Def::Structures<C> {
 			for (const auto & dyn : *this) {
 				switch (dyn.tag()) {
 					case Def::DT_STRTAB:
-						assert(dyn.value() > delta);
-						strtab = dyn.value() - delta;
+						strtab = fix_offset(dyn.value());
 						break;
 					case Def::DT_VERDEF:
-						assert(dyn.value() > delta);
-						verdef = dyn.value() - delta;
+						verdef = fix_offset(dyn.value());
 						break;
 					case Def::DT_VERDEFNUM:
 						verdefnum = dyn.value();
@@ -1575,12 +1556,10 @@ class ELF : public ELF_Def::Structures<C> {
 			for (const auto & dyn : *this) {
 				switch (dyn.tag()) {
 					case Def::DT_STRTAB:
-						assert(dyn.value() > delta);
-						strtab = dyn.value() - delta;
+						strtab = fix_offset(dyn.value());
 						break;
 					case Def::DT_VERNEED:
-						assert(dyn.value() > delta);
-						verneed = dyn.value() - delta;
+						verneed = fix_offset(dyn.value());
 						break;
 					case Def::DT_VERNEEDNUM:
 						verneednum = dyn.value();
@@ -1612,12 +1591,10 @@ class ELF : public ELF_Def::Structures<C> {
 			for (const auto &dyn: *this) {
 				switch (dyn.tag()) {
 					case Def::DT_STRTAB:
-						assert(dyn.value() > delta);
-						strtab = dyn.value() - delta;
+						strtab = fix_offset(dyn.value());
 						break;
 					case Def::DT_SYMTAB:
-						assert(dyn.value() > delta);
-						symtab = dyn.value() -delta;
+						symtab = fix_offset(dyn.value());
 						break;
 					case Def::DT_SYMENT:
 						assert(dyn.value() == sizeof(typename Def::Sym));
@@ -1625,14 +1602,12 @@ class ELF : public ELF_Def::Structures<C> {
 					case Def::DT_REL:
 						assert(type == Def::DT_NULL || type == Def::DT_REL);
 						type = Def::DT_REL;
-						assert(dyn.value() > delta);
-						rel = this->_accessor._elf.data(dyn.value() - delta);
+						rel = data(dyn.value());
 						break;
 					case Def::DT_RELA:
 						assert(type == Def::DT_NULL || type == Def::DT_RELA);
 						type = Def::DT_RELA;
-						assert(dyn.value() > delta);
-						rel = this->_accessor._elf.data(dyn.value() - delta);
+						rel = data(dyn.value());
 						break;
 					case Def::DT_RELSZ:
 						assert(type == Def::DT_NULL || type == Def::DT_REL);
@@ -1682,16 +1657,13 @@ class ELF : public ELF_Def::Structures<C> {
 			for (const auto &dyn: *this) {
 				switch (dyn.tag()) {
 					case Def::DT_STRTAB:
-						assert(dyn.value() > delta);
-						strtab = dyn.value() - delta;
+						strtab = fix_offset(dyn.value());
 						break;
 					case Def::DT_SYMTAB:
-						assert(dyn.value() > delta);
-						symtab = dyn.value() - delta;
+						symtab = fix_offset(dyn.value());
 						break;
 					case Def::DT_JMPREL:
-						assert(dyn.value() > delta);
-						jmprel = elf().data(dyn.value() - delta);
+						jmprel = data(dyn.value());
 						break;
 					case Def::DT_PLTREL:
 						pltrel = static_cast<typename Def::dyn_tag>(dyn.value());
@@ -1720,25 +1692,63 @@ class ELF : public ELF_Def::Structures<C> {
 			return Array<Relocation>(Relocation(elf()), nullptr, 0);
 		}
 
+		// Function pointer type
+ 		typedef void (*func_t)();
+
+		/*! \brief Pre-Init functions array */
+		Array<Accessor<func_t>> get_preinit_array() const {
+			return get_func(Def::DT_PREINIT_ARRAY, Def::DT_PREINIT_ARRAYSZ);
+		}
+
 		/*! \brief Get initialization function pointer */
-		void (*get_init_function())() const {
+		func_t get_init_function() const {
 			for (const auto & dyn : *this)
-				if (dyn.tag() == Def::DT_INIT) {
-					assert(dyn.value() > delta);
-					return reinterpret_cast<void(*)()>(elf().data(dyn.value() - delta));
-				}
+				if (dyn.tag() == Def::DT_INIT)
+					return reinterpret_cast<func_t>(dyn.value());
 			return nullptr;
 		}
 
+		/*! \brief Init functions array */
+		Array<Accessor<func_t>> get_init_array() const {
+			return get_func(Def::DT_INIT_ARRAY, Def::DT_INIT_ARRAYSZ);
+		}
+
+		/*! \brief run initialization */
+		void init() const {
+			for (const auto & f : get_preinit_array())
+				f.data()();
+
+			auto f = get_init_function();
+			if (f != nullptr)
+				f();
+
+			for (const auto & f : get_init_array())
+				f.data()();
+		}
+
+		/*! \brief De=init functions array */
+		Array<Accessor<func_t>> get_fini_array() const {
+			return get_func(Def::DT_FINI_ARRAY, Def::DT_FINI_ARRAYSZ);
+		}
+
 		/*! \brief Get deinitialization function pointer */
-		void (*get_fini_function())() const {
+		func_t get_fini_function() const {
 			for (const auto & dyn : *this)
-				if (dyn.tag() == Def::DT_FINI) {
-					assert(dyn.value() > delta);
-					return reinterpret_cast<void(*)()>(elf().data(dyn.value() - delta));
-				}
+				if (dyn.tag() == Def::DT_FINI)
+					return reinterpret_cast<func_t>(dyn.value());
 			return nullptr;
 		}
+
+		/*! \brief run deinitialization */
+		void fini() const {
+			for (const auto & f : get_fini_array()())
+				f.data()();
+
+			auto f = get_fini_function();
+			if (f != nullptr)
+				f();
+		}
+
 
 		/*! \brief Contents of the global offset table */
 		Array<Accessor<void*>> get_global_offset_table() const {
@@ -1749,8 +1759,7 @@ class ELF : public ELF_Def::Structures<C> {
 			for (const auto & dyn : *this) {
 				switch (dyn.tag()) {
 					case Def::DT_PLTGOT:
-						assert(dyn.value() > delta);
-						got = this->_accessor._elf.data(dyn.value() - delta);
+						got = data(dyn.value());
 						break;
 					case Def::DT_PLTRELSZ:
 						size = dyn.value();
@@ -1772,16 +1781,15 @@ class ELF : public ELF_Def::Structures<C> {
 				}
 			}
 
-			return Array<Accessor<void*>>(Accessor<void*>(elf()), got, 3 + size / entry_size);
+			assert(size == 0 || entry_size != 0);
+			return Array<Accessor<void*>>(Accessor<void*>(elf()), got, size > 0 ? 3 + size / entry_size : 0);
 		}
 
 		/*! \brief Pointer to the global offset table */
-		const void** get_global_offset_table_pointer() const {
+		void** get_global_offset_table_pointer() const {
 			for (const auto & dyn : *this)
-				if (dyn.tag() == Def::DT_PLTGOT) {
-					assert(dyn.value() > delta);
-					return reinterpret_cast<void**>(elf().data(dyn.value() - delta));
-				}
+				if (dyn.tag() == Def::DT_PLTGOT)
+					return reinterpret_cast<void**>(data(dyn.value()));
 			return nullptr;
 		}
 
@@ -1797,6 +1805,8 @@ class ELF : public ELF_Def::Structures<C> {
 		}
 
 	 private:
+		friend struct Segment;
+
 		/*! \brief Helper to determine the size of entries in gnu hash table */
 		static size_t gnu_hash_size(const ELF_Def::GnuHash_header* header) {
 			const elfptr_t * bloom = reinterpret_cast<const elfptr_t *>(header + 1);
@@ -1805,15 +1815,53 @@ class ELF : public ELF_Def::Structures<C> {
 			for (uint32_t i = 0; i < header->nbuckets; i++)
 				if (buckets[i] > n)
 					n = buckets[i];
-			n++;
-			for (const uint32_t * hashval = buckets + header->nbuckets - header->symoffset; (hashval[n] & 1) != 0; n++) {}
 
-			return n;
+			if (n == 0)
+				return header->symoffset;  // TODO: If there are only undefined symbols, this will be set to `1` -- we cannot determine the size...
+
+			for (const uint32_t * chain = buckets + header->nbuckets - header->symoffset; (chain[n] & 1) == 0; n++) {}
+			return n + 1;
 		}
 
 		/*! \brief Helper to get filtered list */
 		List<Entry> get_entry(typename Def::dyn_tag filter) const {
 			return List<Entry>(Entry(elf(), this->_accessor.strtaboff, filter), const_cast<void *>(reinterpret_cast<const void *>(Entry::find(this->_accessor._data, filter))), nullptr);
+		}
+
+		/*! \brief Helper to get function pointer array */
+		Array<Accessor<func_t>> get_func(typename Def::dyn_tag tag_start, typename Def::dyn_tag tag_size) const {
+			void * start = nullptr;
+			size_t size = 0;
+
+			for (const auto & dyn : *this)
+				if (dyn.tag() == tag_start)
+					start = data(dyn.value());
+				else if (dyn.tag() == tag_size)
+					size = dyn.value();
+
+			return Array<Accessor<func_t>>(Accessor<func_t>(elf()), start, size / sizeof(void*));
+		}
+
+		/*! \brief translate virtual address offset according to load segments */
+		static uintptr_t translate(const ELF<C> & elf, uintptr_t offset) {
+			for (const auto & s : elf.segments)
+				if (s.type() == Def::PT_LOAD && offset >= s.virt_addr() && offset <= s.virt_addr() + s.size())  {
+					assert(offset + s.offset() >= s.virt_addr());
+					return offset + s.offset() - s.virt_addr();
+				}
+			// Memory not available (BSS?)
+			assert(false);
+			return 0;
+		}
+
+		/*! \brief fix virtual address offset if not mapped according to load segment */
+		inline uintptr_t fix_offset(uintptr_t offset) const {
+			return translate_address ? translate(elf(), offset) : offset;
+		}
+
+		/*! \brief get ELF memory address (fix if virt addr not mapped) */
+		inline void * data(uintptr_t offset) const {
+			return elf().data(fix_offset(offset));
 		}
 	};
 
