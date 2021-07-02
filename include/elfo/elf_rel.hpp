@@ -41,7 +41,7 @@ struct Relocator : private ELF_Def::Constants {
 					return 0;
 
 				case R_386_COPY:
-					memcpy(reinterpret_cast<void*>(B), reinterpret_cast<void*>(S), Z);
+					memcpy(reinterpret_cast<void*>(P), reinterpret_cast<void*>(S), Z);
 					return 0;
 
 				case R_386_8:
@@ -90,7 +90,7 @@ struct Relocator : private ELF_Def::Constants {
 						return 0;
 
 					case R_X86_64_COPY:
-						memcpy(reinterpret_cast<void*>(B), reinterpret_cast<void*>(S), Z);
+						memcpy(reinterpret_cast<void*>(P), reinterpret_cast<void*>(S), Z);
 						return 0;
 
 					case R_X86_64_GLOB_DAT:
