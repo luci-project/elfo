@@ -160,6 +160,11 @@ class Dump {
 							cout << " " << flag;
 					}
 					break;
+
+				case ELF<C>::DT_PLTREL:
+					cout << static_cast<typename ELF<C>::dyn_tag>(dyn.value());
+					break;
+
 				case ELF<C>::DT_PLTRELSZ:
 				case ELF<C>::DT_RELASZ:
 				case ELF<C>::DT_RELAENT:
@@ -173,6 +178,7 @@ class Dump {
 				case ELF<C>::DT_GNU_LIBLISTSZ:
 				case ELF<C>::DT_PLTPADSZ:
 				case ELF<C>::DT_MOVESZ:
+				case ELF<C>::DT_SYMENT:
 				case ELF<C>::DT_SYMINSZ:
 				case ELF<C>::DT_SYMINENT:
 					cout << DEC() << dyn.value() << " (bytes)";
@@ -520,25 +526,87 @@ class Dump {
 				}
 		} else {
 			const auto & dyn = elf.dynamic();
-			cout << "Dynamic section contains " << DEC() << dyn.count() << " entries:" << endl;
-			dynamic(dyn);
+			if (!dyn.empty()) {
+				cout << "Dynamic section contains " << DEC() << dyn.count() << " entries:" << endl;
+				dynamic(dyn);
 
-			auto sym = dyn.get_symbols();
-			cout << "Dynamic Symbol table contains " << sym.count() << " entries:" << endl;
-			symbols(sym);
+				auto sym = dyn.get_symbols();
+				cout << "Dynamic Symbol table contains " << sym.count() << " entries:" << endl;
+				symbols(sym);
 
-			auto verdef = dyn.get_version_definition();
-			if (!verdef.empty()) {
-				cout << "Version definition contains " << verdef.count() << " entries:" << endl;
-				version_definition(verdef);
+				auto rel = dyn.get_relocations();
+				if (!rel.empty()) {
+					cout << "Dynamic relocation table (excluding PLT) contains " << DEC() << rel.count() << " entries:" << endl;
+					relocations(rel);
+				}
+
+				auto relplt = dyn.get_relocations_plt();
+				if (!relplt.empty()) {
+					cout << "PLT relocation table contains " << DEC() << relplt.count() << " entries:" << endl;
+					relocations(relplt);
+				}
+
+				auto got = dyn.get_global_offset_table();
+				if (!got.empty()) {
+					cout << "Global offset table contains " << got.count() << " entries:" << endl;
+					for (const auto & e : got)
+						cout << "  GOT[" << got.index(e) << "] = " << e.data() << endl;
+					cout << endl;
+				}
+
+				auto preinit_array = dyn.get_preinit_array();
+				auto init = dyn.get_init_function();
+				auto init_array = dyn.get_init_array();
+				auto fini_array = dyn.get_fini_array();
+				auto fini = dyn.get_fini_function();
+
+				if (!preinit_array.empty() || init != nullptr || !init_array.empty() || !fini_array.empty() || fini != nullptr) {
+					cout << "(De-)Initialize -- " << (preinit_array.count() + (init == nullptr ? 0 : 1) + init_array.count() + fini_array.count() + (fini == nullptr ? 0 : 1)) << " functions:" << endl;
+					for (const auto & i : preinit_array)
+						cout << "  - PREINIT_ARRAY " << (void*)i.data() << endl;
+					if (init != nullptr)
+						cout << "  - INIT " << (void*)init << endl;
+					for (const auto & i : init_array)
+						cout << "  - INIT_ARRAY " << (void*)i.data() << endl;
+					for (const auto & i : fini_array)
+						cout << "  - FINI_ARRAY " << (void*)i.data() << endl;
+					if (fini != nullptr)
+						cout << "  - FINI " << (void*)fini << endl;
+					cout << endl;
+				}
+
+				auto verdef = dyn.get_version_definition();
+				if (!verdef.empty()) {
+					cout << "Version definition contains " << verdef.count() << " entries:" << endl;
+					version_definition(verdef);
+				}
+
+				auto verneed = dyn.get_version_needed();
+				if (!verneed.empty()) {
+					cout << "Version dependency contains " << verneed.count() << " entries:" << endl;
+					version_needed(verneed);
+				}
+
+				auto needed = dyn.get_needed();
+				if (!needed.empty()) {
+					cout << "Binary has " << needed.count() << " library dependencies:" << endl;
+					for (const auto & n : needed)
+						cout << "  - " << n.string() << endl;
+					cout << endl;
+				}
+
+				auto rpath = dyn.get_rpath();
+				auto runpath = dyn.get_runpath();
+				if (!rpath.empty() || !runpath.empty()) {
+					cout << "Binary has " << (rpath.count() + runpath.count()) << " library lookup paths:" << endl;
+					for (const auto & r : rpath)
+						cout << "  - RPATH " << r.string() << endl;
+					for (const auto & r : runpath)
+						cout << "  - RUNPATH " << r.string() << endl;
+					cout << endl;
+				}
+
 			}
-
-			auto verneed = dyn.get_version_needed();
-			if (!verneed.empty()) {
-				cout << "Version dependency contains " << verneed.count() << " entries:" << endl;
-				version_needed(verneed);
-			}
-
 		}
 	}
 };
