@@ -1720,60 +1720,61 @@ class ELF : public ELF_Def::Structures<C> {
 		}
 
 		// Function pointer type
- 		typedef void (*func_t)();
+		typedef void (*func_init_t)(int argc, const char **argv, const char **envp);
+		typedef void (*func_fini_t)();
 
 		/*! \brief Pre-Init functions array */
-		Array<Accessor<func_t>> get_preinit_array() const {
-			return get_func(Def::DT_PREINIT_ARRAY, Def::DT_PREINIT_ARRAYSZ);
+		Array<Accessor<func_init_t>> get_preinit_array() const {
+			return get_func<func_init_t>(Def::DT_PREINIT_ARRAY, Def::DT_PREINIT_ARRAYSZ);
 		}
 
 		/*! \brief Get initialization function pointer */
-		func_t get_init_function() const {
+		func_init_t get_init_function() const {
 			for (const auto & dyn : *this)
 				if (dyn.tag() == Def::DT_INIT)
-					return reinterpret_cast<func_t>(dyn.value());
+					return reinterpret_cast<func_init_t>(dyn.value());
 			return nullptr;
 		}
 
 		/*! \brief Init functions array */
-		Array<Accessor<func_t>> get_init_array() const {
-			return get_func(Def::DT_INIT_ARRAY, Def::DT_INIT_ARRAYSZ);
+		Array<Accessor<func_init_t>> get_init_array() const {
+			return get_func<func_init_t>(Def::DT_INIT_ARRAY, Def::DT_INIT_ARRAYSZ);
 		}
 
 		/*! \brief run initialization */
-		void init() const {
+		void init(int argc, const char **argv, const char **envp, uintptr_t offset = 0) const {
 			for (const auto & f : get_preinit_array())
-				f.data()();
+				func_offset(f.data(), offset)(argc, argv, envp);
 
 			auto f = get_init_function();
 			if (f != nullptr)
-				f();
+				func_offset(f, offset)(argc, argv, envp);
 
 			for (const auto & f : get_init_array())
-				f.data()();
+				func_offset(f.data(), offset)(argc, argv, envp);
 		}
 
 		/*! \brief De=init functions array */
-		Array<Accessor<func_t>> get_fini_array() const {
-			return get_func(Def::DT_FINI_ARRAY, Def::DT_FINI_ARRAYSZ);
+		Array<Accessor<func_fini_t>> get_fini_array() const {
+			return get_func<func_fini_t>(Def::DT_FINI_ARRAY, Def::DT_FINI_ARRAYSZ);
 		}
 
 		/*! \brief Get deinitialization function pointer */
-		func_t get_fini_function() const {
+		func_fini_t get_fini_function() const {
 			for (const auto & dyn : *this)
 				if (dyn.tag() == Def::DT_FINI)
-					return reinterpret_cast<func_t>(dyn.value());
+					return reinterpret_cast<func_fini_t>(dyn.value());
 			return nullptr;
 		}
 
 		/*! \brief run deinitialization */
-		void fini() const {
+		void fini(uintptr_t offset = 0) const {
 			for (const auto & f : get_fini_array()())
-				f.data()();
+				func_offset(f.data(), offset)();
 
 			auto f = get_fini_function();
 			if (f != nullptr)
-				f();
+				func_offset(f, offset)();
 		}
 
 
@@ -1856,7 +1857,8 @@ class ELF : public ELF_Def::Structures<C> {
 		}
 
 		/*! \brief Helper to get function pointer array */
-		Array<Accessor<func_t>> get_func(typename Def::dyn_tag tag_start, typename Def::dyn_tag tag_size) const {
+		template<typename F>
+		Array<Accessor<F>> get_func(typename Def::dyn_tag tag_start, typename Def::dyn_tag tag_size) const {
 			void * start = nullptr;
 			size_t size = 0;
 
@@ -1866,7 +1868,13 @@ class ELF : public ELF_Def::Structures<C> {
 				else if (dyn.tag() == tag_size)
 					size = dyn.value();
 
-			return { Accessor<func_t>{elf()}, start, size / sizeof(void*) };
+			return { Accessor<F>{elf()}, start, size / sizeof(void*) };
+		}
+
+		/*! \brief add offset to function pointer */
+		template<typename F>
+		static F func_offset(F f, uintptr_t offset) {
+			return reinterpret_cast<F>(reinterpret_cast<uintptr_t>(f) + offset);
 		}
 
 		/*! \brief translate virtual address offset according to load segments */
