@@ -416,39 +416,55 @@ class ELF : public ELF_Def::Structures<C> {
 			return type() == Def::PT_INTERP ? reinterpret_cast<const char *>(this->_elf.data(this->_data->p_offset)) : nullptr;
 		}
 
-		/*! \brief Get contents of dynamic secion */
-		Array<Dynamic> get_dynamic() const {
+		/*! \brief Get contents of dynamic secion
+		 * \param mapped the elf file is already mapped to the segments virt_mem
+		 */
+		Array<Dynamic> get_dynamic(bool mapped = false) const {
 			assert(type() == Def::PT_DYNAMIC);
 			size_t entries = 0;
 			uintptr_t strtaboff = 0;
-			bool translate_address = false;
-			void * dyn = load_dynamic(offset(), strtaboff, entries, translate_address);
-			if (translate_address)
-				strtaboff = translate(this->_elf, strtaboff);
+			bool absolute_address = false;
+			void * dyn = load_dynamic(mapped, strtaboff, entries, absolute_address);
 			return { Dynamic{this->_elf, strtaboff}, dyn, entries };
 		}
 
-		/*! \brief Get contents of dynamic secion */
-		DynamicTable get_dynamic_table() const {
+		/*! \brief Get contents of dynamic secion
+		 * \param mapped the elf file is already mapped to the segments virt_mem
+		 */
+		DynamicTable get_dynamic_table(bool mapped = false) const {
 			assert(type() == Def::PT_DYNAMIC);
 			size_t entries = 0;
 			uintptr_t strtaboff = 0;
-			bool translate_address = false;
-			load_dynamic(offset(), strtaboff, entries, translate_address);
-			return DynamicTable{this->_elf, offset(), entries, strtaboff, translate_address};
+			bool absolute_address = false;
+			void * dyn = load_dynamic(mapped, strtaboff, entries, absolute_address);
+			return DynamicTable{this->_elf, dyn, entries, strtaboff, !mapped, absolute_address};
 		}
 
 	 private:
-		void * load_dynamic(uintptr_t offset, uintptr_t & strtaboff, size_t & entries, bool & translate_address) const {
-			typename Def::Dyn * dyn = reinterpret_cast<typename Def::Dyn *>(this->_elf.data(offset));
+		void * load_dynamic(bool mapped, uintptr_t & strtaboff, size_t & entries, bool & absolute_address) const {
+			// Static, non relocatable binaries use absolute addressing
+			absolute_address = this->_elf.header.type() == Def::ET_EXEC;
+
+			// If mapped use virtual address, otherwise offset
+			typename Def::Dyn * dyn;
+			if (mapped)
+				dyn = reinterpret_cast<typename Def::Dyn *>((absolute_address ? 0 : this->_elf.start()) + virt_addr());
+			else
+				dyn = reinterpret_cast<typename Def::Dyn *>(this->_elf.data(offset()));
+
 			size_t limit = (size() / sizeof(*dyn)) - 1;
 			entries = 0;
 			for (; entries < limit && dyn[entries].d_tag != Def::DT_NULL; entries++)
 				if (dyn[entries].d_tag == Def::DT_STRTAB)
 					strtaboff = dyn[entries].d_un.d_val;
+
+			if (!mapped)
+				strtaboff = DynamicTable::translate(this->_elf, strtaboff);
+			else if (absolute_address)
+				strtaboff -= this->_elf.start();
+
 			entries++;
 
-			translate_address = reinterpret_cast<uintptr_t>(dyn) != virt_addr();
 			return dyn;
 		}
 	};
@@ -570,13 +586,13 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \param elf This elf file
 		 * \param section_type Hash, Gnu Hash, Symbol or Dynamic Symbol Table?
 		 * \param header Pointer to hash header if applicable
-		 * \param symtaboff Offset in elf file to symbol table
+		 * \param symtab Pointer to symbol table
 		 * \param symtabentries Number of entries in symbol table
 		 * \param versions Pointer versions array (for symbol table) if available (otherwise: `nullptr`)
 		 * \param strtaboff Offset in elf file to string table
 		 */
-		SymbolTable(const ELF<C> & elf, const typename Def::shdr_type section_type, const void * header, uintptr_t symtaboff, size_t symtabentries, const uint16_t * versions, uintptr_t strtaboff)
-		  : Array<Symbol>{ Symbol{ elf, strtaboff}, elf.data(symtaboff), symtabentries}, section_type{section_type}, header{header}, versions{versions} {}
+		SymbolTable(const ELF<C> & elf, const typename Def::shdr_type section_type, const void * header, void * symtab, size_t symtabentries, const uint16_t * versions, uintptr_t strtaboff)
+		  : Array<Symbol>{ Symbol{ elf, strtaboff}, symtab, symtabentries}, section_type{section_type}, header{header}, versions{versions} {}
 
 		/*! \brief Empty (non-existing) symbol table
 		 */
@@ -671,7 +687,7 @@ class ELF : public ELF_Def::Structures<C> {
 
 		/*! \brief Helper constructor */
 		SymbolTable(const ELF<C> & elf, const typename Def::shdr_type section_type, void * header, const Section & symbol_section, const Section & version_section)
-		  : SymbolTable{elf, section_type, header, symbol_section.offset(), symbol_section.entries(), version_section.type() == Def::SHT_GNU_VERSYM ? version_section.get_versions() : nullptr, elf.sections[symbol_section.link()].offset()} {
+		  : SymbolTable{elf, section_type, header, elf.data(symbol_section.offset()), symbol_section.entries(), version_section.type() == Def::SHT_GNU_VERSYM ? version_section.get_versions() : nullptr, elf.sections[symbol_section.link()].offset()} {
 			assert(section_type == Def::SHT_GNU_HASH || section_type == Def::SHT_HASH || section_type == Def::SHT_DYNSYM || section_type == Def::SHT_SYMTAB);
 			assert(section_type == Def::SHT_DYNSYM || section_type == Def::SHT_SYMTAB || header != nullptr);
 		}
@@ -1371,8 +1387,10 @@ class ELF : public ELF_Def::Structures<C> {
 
 	/*! \brief Helper to access the Dynamic Section */
 	struct DynamicTable : public Array<Dynamic> {
-		/*! \brief Difference from virtual memory and file offset (to calculate file relative offset) */
+		/*! \brief Translate from virtual memory to file offset (required if not mapped according to segments) */
 		const bool translate_address;
+		/*! \brief Offsets are absolute address (= non dynamic Elf) */
+		const bool absolute_address;
 
 		/*! \brief Filter list entries */
 		struct Entry : public Dynamic {
@@ -1413,24 +1431,24 @@ class ELF : public ELF_Def::Structures<C> {
 		 * similar to dynamic array, but offering easy access functions to its contents
 		 */
 		DynamicTable(const ELF<C> & elf, const Section & section)
-		  : DynamicTable{elf, section.data(), section.dynamic_entries(), elf.sections[section.link()].offset(), section.virt_addr() != section.offset()} {
+		  : DynamicTable{elf, section.data(), section.dynamic_entries(), elf.sections[section.link()].offset(), section.virt_addr() != section.offset(), this->_elf.header.type() == Def::ET_EXEC} {
 			assert(section.type() == Def::SHT_DYNAMIC);
 			assert(elf.sections[section.link()].type() == Def::SHT_STRTAB);
 		}
 
 		/*! \brief Raw dynamic table
 		 * \param elf Pointer to elf
-		 * \param dyntaboff Offset to dynamic table
+		 * \param dyntab Pointer to dynamic table
 		 * \param dyntabentries Number of entries in dynamic table
 		 * \param strtaboff Offset to associated string table
 		 * \param translate_address Difference between virtual address (used in dynamic) and file offset needs fix of offset
 		 */
-		DynamicTable(const ELF<C> & elf, uintptr_t dyntaboff, size_t dyntabentries, uintptr_t strtaboff, bool translate_address)
-		  : Array<Dynamic>{Dynamic{elf, translate_address ? translate(elf, strtaboff) : strtaboff}, elf.data(dyntaboff), dyntabentries}, translate_address{translate_address} {}
+		DynamicTable(const ELF<C> & elf, void * dyntab, size_t dyntabentries, uintptr_t strtaboff, bool translate_address, bool absolute_address)
+		  : Array<Dynamic>{Dynamic{elf, strtaboff}, dyntab, dyntabentries}, translate_address{translate_address}, absolute_address(absolute_address) {}
 
 		/*! \brief Empty (non-existing) dynamic table */
 		explicit DynamicTable(const ELF<C> & elf)
-		  : Array<Dynamic>{Dynamic{elf}, 0, 0}, translate_address{false} {}
+		  : Array<Dynamic>{Dynamic{elf}, 0, 0}, translate_address{false}, absolute_address{false}  {}
 
 		/*! \brief Get the corresponding ELF */
 		const ELF<C> & elf() const {
@@ -1468,7 +1486,7 @@ class ELF : public ELF_Def::Structures<C> {
 		/*! \brief Get contents of symbol table section as \ref Array of \ref Symbol elements  */
 		Array<Symbol> get_symbols() const {
 			uintptr_t strtab = 0;
-			uintptr_t symtab = 0;
+			void * symtab = nullptr;
 			size_t symtabnum = 0;
 
 			for (const auto &dyn: *this) {
@@ -1477,7 +1495,7 @@ class ELF : public ELF_Def::Structures<C> {
 						strtab = fix_offset(dyn.value());;
 						break;
 					case Def::DT_SYMTAB:
-						symtab = fix_offset(dyn.value());
+						symtab = data(dyn.value());
 						break;
 					case Def::DT_SYMENT:
 						assert(dyn.value() == sizeof(typename Def::Sym));
@@ -1493,14 +1511,14 @@ class ELF : public ELF_Def::Structures<C> {
 				}
 			}
 			assert(symtab != 0 && strtab != 0);
-			return { Symbol{elf(), strtab}, elf().data(symtab), symtabnum };
+			return { Symbol{elf(), strtab}, symtab, symtabnum };
 		}
 
 		/*! \brief Get contents of symbol table section
 		 */
 		SymbolTable get_symbol_table() const {
 			uintptr_t strtab = 0;
-			uintptr_t symtab = 0;
+			void * symtab = nullptr;
 			size_t symtabnum = 0;
 			typename Def::shdr_type section_type = Def::SHT_DYNSYM;
 			void * header = nullptr;
@@ -1512,7 +1530,7 @@ class ELF : public ELF_Def::Structures<C> {
 						strtab = fix_offset(dyn.value());
 						break;
 					case Def::DT_SYMTAB:
-						symtab = fix_offset(dyn.value());
+						symtab = data(dyn.value());
 						break;
 					case Def::DT_SYMENT:
 						assert(dyn.value() == sizeof(typename Def::Sym));
@@ -1537,7 +1555,7 @@ class ELF : public ELF_Def::Structures<C> {
 						continue;
 				}
 			}
-			assert(symtab != 0 && strtab != 0);
+			assert(symtab != nullptr && strtab != 0);
 			assert(header != nullptr);  // hash table is mandatory
 			return SymbolTable{elf(), section_type, header, symtab, symtabnum, versions, strtab};
 		}
@@ -1545,7 +1563,7 @@ class ELF : public ELF_Def::Structures<C> {
 		/*! \brief Get contents of version definition section as \ref List of \ref VersionDefinition elements  */
 		List<VersionDefinition> get_version_definition() const {
 			uintptr_t strtab = 0;
-			uintptr_t verdef = 0;
+			void * verdef = nullptr;
 			uintptr_t verdefnum = 0;
 
 			for (const auto & dyn : *this) {
@@ -1554,7 +1572,7 @@ class ELF : public ELF_Def::Structures<C> {
 						strtab = fix_offset(dyn.value());
 						break;
 					case Def::DT_VERDEF:
-						verdef = fix_offset(dyn.value());
+						verdef = data(dyn.value());
 						break;
 					case Def::DT_VERDEFNUM:
 						verdefnum = dyn.value();
@@ -1568,7 +1586,7 @@ class ELF : public ELF_Def::Structures<C> {
 				assert(verdefnum == 0);
 				return { VersionDefinition{elf()}, nullptr, nullptr };
 			} else {
-				const auto & l = List<VersionDefinition>{ VersionDefinition{elf(), strtab}, elf().data(verdef), nullptr };
+				const auto & l = List<VersionDefinition>{ VersionDefinition{elf(), strtab}, verdef, nullptr };
 				assert(l.count() == verdefnum);
 				return l;
 			}
@@ -1577,7 +1595,7 @@ class ELF : public ELF_Def::Structures<C> {
 		/*! \brief Get contents of version needed section as \ref List of \ref VersionNeeded elements  */
 		List<VersionNeeded> get_version_needed() const {
 			uintptr_t strtab = 0;
-			uintptr_t verneed = 0;
+			void * verneed = nullptr;
 			uintptr_t verneednum = 0;
 
 			for (const auto & dyn : *this) {
@@ -1586,7 +1604,7 @@ class ELF : public ELF_Def::Structures<C> {
 						strtab = fix_offset(dyn.value());
 						break;
 					case Def::DT_VERNEED:
-						verneed = fix_offset(dyn.value());
+						verneed = data(dyn.value());
 						break;
 					case Def::DT_VERNEEDNUM:
 						verneednum = dyn.value();
@@ -1600,7 +1618,7 @@ class ELF : public ELF_Def::Structures<C> {
 				assert(verneednum == 0);
 				return { VersionNeeded{elf()}, nullptr, nullptr };
 			} else {
-				const auto & l = List<VersionNeeded>{ VersionNeeded{elf(), strtab}, elf().data(verneed), nullptr };
+				const auto & l = List<VersionNeeded>{ VersionNeeded{elf(), strtab}, verneed, nullptr };
 				assert(l.count() == verneednum);
 				return l;
 			}
@@ -1877,7 +1895,7 @@ class ELF : public ELF_Def::Structures<C> {
 			return reinterpret_cast<F>(reinterpret_cast<uintptr_t>(f) + offset);
 		}
 
-		/*! \brief translate virtual address offset according to load segments */
+		/*! \brief translate virtual address according to load segments into offsets*/
 		static uintptr_t translate(const ELF<C> & elf, uintptr_t offset) {
 			for (const auto & s : elf.segments)
 				if (s.type() == Def::PT_LOAD && offset >= s.virt_addr() && offset <= s.virt_addr() + s.size())  {
@@ -1889,14 +1907,30 @@ class ELF : public ELF_Def::Structures<C> {
 			return 0;
 		}
 
-		/*! \brief fix virtual address offset if not mapped according to load segment */
+		/*! \brief fix virtual address offset if not mapped according to load segment
+		 *  \param offset value from dynamic table
+		 *  \return relative offset to start of elf
+		 */
 		inline uintptr_t fix_offset(uintptr_t offset) const {
-			return translate_address ? translate(elf(), offset) : offset;
+			if (translate_address)
+				return translate(elf(), offset);
+			else if (absolute_address)
+				return offset - elf().start();
+			else
+				return offset;
 		}
 
-		/*! \brief get ELF memory address (fix if virt addr not mapped) */
+		/*! \brief get ELF memory address
+		 *  \param offset value from dynamic table
+		 *  \return pointer to element in (current) memory
+		 */
 		inline void * data(uintptr_t offset) const {
-			return elf().data(fix_offset(offset));
+			if (translate_address)
+				return elf().data(translate(elf(), offset));
+			else if (absolute_address)
+				return reinterpret_cast<void*>(offset);
+			else
+				return elf().data(offset);
 		}
 	};
 
@@ -2195,11 +2229,13 @@ class ELF : public ELF_Def::Structures<C> {
 		return true;
 	}
 
-	/*! \brief Access dynamic section */
-	DynamicTable dynamic() const {
+	/*! \brief Access dynamic section
+	 * \param mapped the elf file is mapped according to the segments
+	 */
+	DynamicTable dynamic(bool mapped = false) const {
 		for (const auto &s : segments)
 			if (s.type() == Def::PT_DYNAMIC)
-				return s.get_dynamic_table();
+				return s.get_dynamic_table(mapped);
 		return DynamicTable{*this};
 	}
 
