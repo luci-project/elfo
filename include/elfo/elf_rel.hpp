@@ -10,20 +10,33 @@ struct Relocator : private ELF_Def::Constants {
 	/*! \brief Offset in object to be relocated */
 	const RELOC & entry;
 
-	/*! \brief Constructor */
-	Relocator(const RELOC & entry) : entry(entry) {
+	/*! \brief address of the global offset table */
+	const uintptr_t global_offset_table;
+
+	/*! \brief TLS module ID */
+	const uintptr_t tls_module_id;
+
+	/*! \brief TLS offset (from thread pointer / %fs) */
+	const intptr_t tls_offset;
+
+	/*! \brief Constructor
+	 * \param entry Relocation
+	 * \param global_offset_table address of the global offset table (in this object)
+	 */
+	Relocator(const RELOC & entry, uintptr_t global_offset_table = 0, uintptr_t tls_module_id = 0, intptr_t tls_offset = 0)
+	  : entry(entry), global_offset_table(global_offset_table), tls_module_id(tls_module_id), tls_offset(tls_offset) {
 		assert(entry.valid());
+		assert(tls_offset == 0 || tls_module_id != 0);
 	}
 
 	/*! \brief Get relocation fix value (for external symbol)
 	 * \param base Base address in target memory of the object to which this relocation belongs to
 	 * \param symbol (External) Symbol (from another object)
 	 * \param symbol_base base address of the object providing the external symbol
-	 * \param global_offset_table address of the global offset table (in this object)
 	 * \param plt_entry PLT entry of the symbol
 	 */
 	template<typename Symbol>
-	uintptr_t value(uintptr_t base, const Symbol & symbol, uintptr_t symbol_base, uintptr_t global_offset_table = 0, uintptr_t plt_entry = 0) const {
+	uintptr_t value(uintptr_t base, const Symbol & symbol, uintptr_t symbol_base, uintptr_t plt_entry = 0) const {
 		const intptr_t A = entry.addend();
 		const uintptr_t B = base;
 		const uintptr_t G = symbol_base + symbol.value();
@@ -58,10 +71,12 @@ struct Relocator : private ELF_Def::Constants {
 					return G + A;
 
 				case R_386_PLT32:
+					assert(L != 0);
 					return L + A - P;
 
 				case R_386_GLOB_DAT:
 				case R_386_JMP_SLOT:
+					assert(A == 0);
 					return S;
 
 				case R_386_RELATIVE:
@@ -74,6 +89,7 @@ struct Relocator : private ELF_Def::Constants {
 					return GOT + A - P;
 
 				case R_386_32PLT:
+					assert(L != 0);
 					return L + A;
 
 				case R_386_SIZE32:
@@ -95,6 +111,7 @@ struct Relocator : private ELF_Def::Constants {
 
 					case R_X86_64_GLOB_DAT:
 					case R_X86_64_JUMP_SLOT:
+						assert(A == 0);
 						return S;
 
 					case R_X86_64_8:
@@ -114,6 +131,7 @@ struct Relocator : private ELF_Def::Constants {
 						return G + A;
 
 					case R_X86_64_PLT32:
+						assert(L != 0);
 						return L + A - P;
 
 					case R_X86_64_RELATIVE:
@@ -143,7 +161,15 @@ struct Relocator : private ELF_Def::Constants {
 					}
 
 					case R_X86_64_TPOFF64:
-						return 0;
+						assert(tls_module_id != 0 && tls_offset != 0);
+						return symbol.value() + A - tls_offset;
+
+					case R_X86_64_DTPMOD64:
+						return tls_module_id;
+
+					case R_X86_64_DTPOFF64:
+						return symbol.value() + A;
+
 
 					default: // Not recognized!
 						assert(false);
@@ -158,11 +184,10 @@ struct Relocator : private ELF_Def::Constants {
 
 	/*! \brief Get relocation fix value for internal symbol
 	 * \param base Base address of the object to which this relocation belongs to
-	 * \param global_offset_table address of the global offset table (in this object)
 	 * \param plt_entry PLT entry of the symbol
 	 */
-	uintptr_t value(uintptr_t base, uintptr_t global_offset_table = 0, uintptr_t plt_entry = 0) const {
-		return value(base, entry.symbol(), base, global_offset_table, plt_entry);
+	uintptr_t value(uintptr_t base, uintptr_t plt_entry = 0) const {
+		return value(base, entry.symbol(), base, plt_entry);
 	}
 
 	/*! \brief Get size of relocation value
@@ -343,23 +368,21 @@ struct Relocator : private ELF_Def::Constants {
 	 * \param base Base address in target memory of the object to which this relocation belongs to
 	 * \param symbol (External) Symbol in another object
 	 * \param symbol_base base address of the object providing the external symbol
-	 * \param global_offset_table address of the global offset table (in this object)
 	 * \param plt_entry PLT entry of the symbol
 	 */
 	template<typename Symbol>
-	uintptr_t fix(uintptr_t base, const Symbol & symbol, uintptr_t symbol_base, uintptr_t global_offset_table = 0, uintptr_t plt_entry = 0) const {
+	uintptr_t fix(uintptr_t base, const Symbol & symbol, uintptr_t symbol_base, uintptr_t plt_entry = 0) const {
 		assert(symbol.section_index() != SHN_UNDEF);
-		return write_value(base, value(base, symbol, symbol_base, global_offset_table, plt_entry));
+		return write_value(base, value(base, symbol, symbol_base, plt_entry));
 	}
 
 	/*! \brief Calculate and apply relocation (for internal symbol)
 	 * \param base Base address in target memory of the object to which this relocation belongs to
-	 * \param global_offset_table address of the global offset table
 	 * \param plt_entry PLT entry of the symbol
 	 */
-	uintptr_t fix(uintptr_t base, uintptr_t global_offset_table = 0, uintptr_t plt_entry = 0) const {
+	uintptr_t fix(uintptr_t base, uintptr_t plt_entry = 0) const {
 		assert(entry.symbol().section_index() == SHN_UNDEF);
-		return write_value(base, value(base, global_offset_table, plt_entry));
+		return write_value(base, value(base, plt_entry));
 	}
 
  private:
