@@ -924,18 +924,20 @@ class ELF : public ELF_Def::Structures<C> {
 		/*! \brief Construct relocation entry (with addend)
 		 * \param elf ELF object to which this relocation belongs to
 		 * \param symtab Symbol table index for this relocation
+		 * \param withAddend Relocation with (`true`) or without (`false`) addend
 		 * \param ptr Pointer to the memory containting the current relocation
 		 */
-		Relocation(const ELF<C> & elf, uint16_t symtab, void * ptr = nullptr)
-		  : Relocation{elf, elf.sections[symtab], ptr} {}
+		Relocation(const ELF<C> & elf, uint16_t symtab, bool withAddend, void * ptr = nullptr)
+		  : Relocation{elf, elf.sections[symtab], withAddend, ptr} {}
 
 		/*! \brief Construct relocation entry (with addend)
 		 * \param elf ELF object to which this relocation belongs to
 		 * \param symtab Symbol table section for this relocation
+		 * \param withAddend Relocation with (`true`) or without (`false`) addend
 		 * \param ptr Pointer to the memory containting the current relocation
 		 */
-		Relocation(const ELF<C> & elf, const Section & symtab, void * ptr = nullptr)
-		  : Relocation{elf, symtab.offset(), elf.sections[symtab.link()].offset(), ptr} {
+		Relocation(const ELF<C> & elf, const Section & symtab, bool withAddend, void * ptr = nullptr)
+		  : Relocation{elf, symtab.offset(), elf.sections[symtab.link()].offset(), withAddend, ptr} {
 			assert(symtab.type() == Def::SHT_SYMTAB || symtab.type() == Def::SHT_DYNSYM);
 			assert(elf.sections[symtab.link()].type() == Def::SHT_STRTAB);
 		}
