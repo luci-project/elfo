@@ -194,10 +194,19 @@ struct Relocator : private ELF_Def::Constants {
 	 * \return Size of relocation value
 	 */
 	size_t size() const {
-		switch (entry.elf().header.machine()) {
+		return size(entry.type(), entry.elf().header.machine());
+	}
+
+	/*! \brief Get size of relocation value
+	 * \param type Relocation type
+	 * \param machine Elf target machine
+	 * \return Size of relocation value
+	 */
+	static size_t size(uintptr_t type, ehdr_machine machine) {
+		switch (machine) {
 			case EM_386:
 			case EM_486:
-				switch (entry.type()) {
+				switch (type) {
 					case R_386_NONE:
 					case R_386_COPY:
 						return 0;
@@ -229,7 +238,7 @@ struct Relocator : private ELF_Def::Constants {
 				}
 
 			case EM_X86_64:
-				switch (entry.type()) {
+				switch (type) {
 					case R_X86_64_NONE:
 					case R_X86_64_COPY:
 						return 0;
