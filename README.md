@@ -12,7 +12,7 @@ Unless you are happy with those limitations, you should better take look at more
 Examples
 --------
 
-The `src` directory contains two example programs, which can be built using
+The `src` directory contains a few example programs, which can be built using
 
     make
 
@@ -21,6 +21,14 @@ The `src` directory contains two example programs, which can be built using
 ### Dump
 
 Displays ELF file information, similar to [GNU Binutils](https://www.gnu.org/software/binutils/) `readelf -a -W`.
+
+### Dynamic-Dump
+
+Displays ELF header and all information accessible via *DYNAMIC* section.
+
+### vDSO-Dump
+
+Dump the contents of the virtual dynamic shared object (residing in memory) into a local file.
 
 ### Lookup
 
