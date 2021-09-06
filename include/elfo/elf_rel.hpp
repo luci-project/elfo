@@ -22,6 +22,33 @@ struct Relocator : private ELF_Def::Constants {
 		assert(entry.valid());
 	}
 
+	/*! \brief Check if copy relocation
+	 * \param type Relocation type
+	 * \param machine Elf target machine
+	 * \return `true` if copy relocation
+	 */
+	static bool is_copy(uintptr_t type, ehdr_machine machine) {
+		switch (machine) {
+			case EM_386:
+			case EM_486:
+				return type == R_386_COPY;
+
+			case EM_X86_64:
+				return type == R_X86_64_COPY;
+
+			default:  // unsupported architecture
+				assert(false);
+				return 0;
+		}
+	}
+
+	/*! \brief Check if this is a copy relocation
+	 * \return `true` if copy relocation
+	 */
+	bool is_copy() {
+		return is_copy(entry.type(), entry.elf().header.machine());
+	}
+
 	/*! \brief Get relocation fix value (for external symbol)
 	 * \param base Base address in target memory of the object to which this relocation belongs to
 	 * \param symbol (External) Symbol (from another object)
@@ -180,8 +207,8 @@ struct Relocator : private ELF_Def::Constants {
 	/*! \brief Get relocation fix value for internal symbol
 	 * \param base Base address of the object to which this relocation belongs to
 	 * \param plt_entry PLT entry of the symbol
- 	 * \param tls_module_id TLS module ID of (external) symbol
- 	 * \param tls_offset TLS offset (from thread pointer / %fs) of (external) symbol
+	 * \param tls_module_id TLS module ID of (external) symbol
+	 * \param tls_offset TLS offset (from thread pointer / %fs) of (external) symbol
 	 */
 	inline uintptr_t value_internal(uintptr_t base, uintptr_t plt_entry = 0, uintptr_t tls_module_id = 0, intptr_t tls_offset = 0) const {
 		return value_external(base, entry.symbol(), base, plt_entry, tls_module_id, tls_offset);
