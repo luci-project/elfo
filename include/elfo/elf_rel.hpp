@@ -13,20 +13,13 @@ struct Relocator : private ELF_Def::Constants {
 	/*! \brief address of the global offset table */
 	const uintptr_t global_offset_table;
 
-	/*! \brief TLS module ID */
-	const uintptr_t tls_module_id;
-
-	/*! \brief TLS offset (from thread pointer / %fs) */
-	const intptr_t tls_offset;
-
 	/*! \brief Constructor
 	 * \param entry Relocation
 	 * \param global_offset_table address of the global offset table (in this object)
 	 */
-	Relocator(const RELOC & entry, uintptr_t global_offset_table = 0, uintptr_t tls_module_id = 0, intptr_t tls_offset = 0)
-	  : entry(entry), global_offset_table(global_offset_table), tls_module_id(tls_module_id), tls_offset(tls_offset) {
+	Relocator(const RELOC & entry, uintptr_t global_offset_table = 0)
+	  : entry(entry), global_offset_table(global_offset_table) {
 		assert(entry.valid());
-		assert(tls_offset == 0 || tls_module_id != 0);
 	}
 
 	/*! \brief Get relocation fix value (for external symbol)
@@ -34,9 +27,11 @@ struct Relocator : private ELF_Def::Constants {
 	 * \param symbol (External) Symbol (from another object)
 	 * \param symbol_base base address of the object providing the external symbol
 	 * \param plt_entry PLT entry of the symbol
+	 * \param tls_module_id TLS module ID of (external) symbol
+	 * \param tls_offset TLS offset (from thread pointer / %fs) of (external) symbol
 	 */
 	template<typename Symbol>
-	uintptr_t value(uintptr_t base, const Symbol & symbol, uintptr_t symbol_base, uintptr_t plt_entry = 0) const {
+	uintptr_t value_external(uintptr_t base, const Symbol & symbol, uintptr_t symbol_base, uintptr_t plt_entry = 0, uintptr_t tls_module_id = 0, intptr_t tls_offset = 0) const {
 		const intptr_t A = entry.addend();
 		const uintptr_t B = base;
 		const uintptr_t G = symbol_base + symbol.value();
@@ -185,15 +180,17 @@ struct Relocator : private ELF_Def::Constants {
 	/*! \brief Get relocation fix value for internal symbol
 	 * \param base Base address of the object to which this relocation belongs to
 	 * \param plt_entry PLT entry of the symbol
+ 	 * \param tls_module_id TLS module ID of (external) symbol
+ 	 * \param tls_offset TLS offset (from thread pointer / %fs) of (external) symbol
 	 */
-	uintptr_t value(uintptr_t base, uintptr_t plt_entry = 0) const {
-		return value(base, entry.symbol(), base, plt_entry);
+	inline uintptr_t value_internal(uintptr_t base, uintptr_t plt_entry = 0, uintptr_t tls_module_id = 0, intptr_t tls_offset = 0) const {
+		return value_external(base, entry.symbol(), base, plt_entry, tls_module_id, tls_offset);
 	}
 
 	/*! \brief Get size of relocation value
 	 * \return Size of relocation value
 	 */
-	size_t size() const {
+	inline size_t size() const {
 		return size(entry.type(), entry.elf().header.machine());
 	}
 
@@ -310,7 +307,7 @@ struct Relocator : private ELF_Def::Constants {
 	 * \param base base address
 	 * \return target address
 	 */
-	uintptr_t address(uintptr_t base) const {
+	inline uintptr_t address(uintptr_t base) const {
 		return base + entry.offset();
 	}
 
@@ -378,20 +375,24 @@ struct Relocator : private ELF_Def::Constants {
 	 * \param symbol (External) Symbol in another object
 	 * \param symbol_base base address of the object providing the external symbol
 	 * \param plt_entry PLT entry of the symbol
+	 * \param tls_module_id TLS module ID of (external) symbol
+	 * \param tls_offset TLS offset (from thread pointer / %fs) of (external) symbol
 	 */
 	template<typename Symbol>
-	uintptr_t fix(uintptr_t base, const Symbol & symbol, uintptr_t symbol_base, uintptr_t plt_entry = 0) const {
+	inline uintptr_t fix_external(uintptr_t base, const Symbol & symbol, uintptr_t symbol_base, uintptr_t plt_entry = 0, uintptr_t tls_module_id = 0, intptr_t tls_offset = 0) const {
 		assert(symbol.section_index() != SHN_UNDEF);
-		return write_value(base, value(base, symbol, symbol_base, plt_entry));
+		return write_value(base, value_external(base, symbol, symbol_base, plt_entry, tls_module_id, tls_offset));
 	}
 
 	/*! \brief Calculate and apply relocation (for internal symbol)
 	 * \param base Base address in target memory of the object to which this relocation belongs to
 	 * \param plt_entry PLT entry of the symbol
+	 * \param tls_module_id TLS module ID of (external) symbol
+	 * \param tls_offset TLS offset (from thread pointer / %fs) of (external) symbol
 	 */
-	uintptr_t fix(uintptr_t base, uintptr_t plt_entry = 0) const {
+	inline uintptr_t fix_internal(uintptr_t base, uintptr_t plt_entry = 0, uintptr_t tls_module_id = 0, intptr_t tls_offset = 0) const {
 		assert(entry.symbol().section_index() == SHN_UNDEF);
-		return write_value(base, value(base, plt_entry));
+		return write_value(base, value_internal(base, plt_entry, tls_module_id, tls_offset));
 	}
 
  private:
@@ -401,7 +402,7 @@ struct Relocator : private ELF_Def::Constants {
 	* \return current value
 	*/
 	template<typename T>
-	static uintptr_t read(uintptr_t mem) {
+	static inline uintptr_t read(uintptr_t mem) {
 		T * m = reinterpret_cast<T *>(mem);
 		return static_cast<uintptr_t>(*m);
 	}
@@ -413,7 +414,7 @@ struct Relocator : private ELF_Def::Constants {
 	* \return written value
 	*/
 	template<typename T>
-	static uintptr_t write(uintptr_t mem, uintptr_t value) {
+	static inline uintptr_t write(uintptr_t mem, uintptr_t value) {
 		T v = static_cast<T>(value);
 		T * m = reinterpret_cast<T *>(mem);
 		*m = v;
@@ -428,7 +429,7 @@ struct Relocator : private ELF_Def::Constants {
 	* \return written value
 	*/
 	template<typename T>
-	static uintptr_t increment(uintptr_t mem, uintptr_t delta_value) {
+	static inline uintptr_t increment(uintptr_t mem, uintptr_t delta_value) {
 		T v = static_cast<T>(delta_value);
 		T * m = reinterpret_cast<T *>(mem);
 		*m += v;
