@@ -1,7 +1,7 @@
 #pragma once
 
 #include "elf.hpp"
-#include <dlh/utils/log.hpp>
+
 /*! \brief Calculate relocation */
 template<typename RELOC>
 struct Relocator : private ELF_Def::Constants {
