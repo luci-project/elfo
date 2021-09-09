@@ -1,7 +1,7 @@
 #pragma once
 
 #include "elf.hpp"
-
+#include <dlh/utils/log.hpp>
 /*! \brief Calculate relocation */
 template<typename RELOC>
 struct Relocator : private ELF_Def::Constants {
@@ -45,11 +45,40 @@ struct Relocator : private ELF_Def::Constants {
 	/*! \brief Check if this is a copy relocation
 	 * \return `true` if copy relocation
 	 */
-	bool is_copy() {
+	bool is_copy() const {
 		return is_copy(entry.type(), entry.elf().header.machine());
 	}
 
-	/*! \brief Get relocation fix value (for external symbol)
+	/*! \brief Check if indirect relocation
+	 * \param type Relocation type
+	 * \param machine Elf target machine
+	 * \return `true` if indirect relocation
+	 */
+	static bool is_indirect(uintptr_t type, ehdr_machine machine) {
+		switch (machine) {
+			case EM_386:
+			case EM_486:
+				return type == R_386_IRELATIVE;
+
+			case EM_X86_64:
+				return type == R_X86_64_IRELATIVE;
+
+			default:  // unsupported architecture
+				assert(false);
+				return 0;
+		}
+	}
+
+	/*! \brief Check if this is a indirect relocation
+	 * \return `true` if indirect relocation
+	 */
+	bool is_indirect() const {
+		return is_indirect(entry.type(), entry.elf().header.machine());
+	}
+
+
+	/*! \brief Get relocation fix value
+	 * \note neither copy is performed nor an indirection function is called
 	 * \param base Base address in target memory of the object to which this relocation belongs to
 	 * \param symbol (External) Symbol (from another object)
 	 * \param symbol_base base address of the object providing the external symbol
@@ -58,7 +87,7 @@ struct Relocator : private ELF_Def::Constants {
 	 * \param tls_offset TLS offset (from thread pointer / %fs) of (external) symbol
 	 */
 	template<typename Symbol>
-	uintptr_t value_external(uintptr_t base, const Symbol & symbol, uintptr_t symbol_base, uintptr_t plt_entry = 0, uintptr_t tls_module_id = 0, intptr_t tls_offset = 0) const {
+	uintptr_t value(uintptr_t base, const Symbol & symbol, uintptr_t symbol_base, uintptr_t plt_entry = 0, uintptr_t tls_module_id = 0, intptr_t tls_offset = 0) const {
 		const intptr_t A = entry.addend();
 		const uintptr_t B = base;
 		const uintptr_t G = symbol_base + symbol.value();
@@ -76,8 +105,7 @@ struct Relocator : private ELF_Def::Constants {
 					return 0;
 
 				case R_386_COPY:
-					memcpy(reinterpret_cast<void*>(P), reinterpret_cast<void*>(S), Z);
-					return 0;
+					return S;
 
 				case R_386_8:
 				case R_386_16:
@@ -102,6 +130,7 @@ struct Relocator : private ELF_Def::Constants {
 					return S;
 
 				case R_386_RELATIVE:
+				case R_386_IRELATIVE:
 					return B + A;
 
 				case R_386_GOTOFF:
@@ -128,8 +157,7 @@ struct Relocator : private ELF_Def::Constants {
 						return 0;
 
 					case R_X86_64_COPY:
-						memcpy(reinterpret_cast<void*>(P), reinterpret_cast<void*>(S), Z);
-						return 0;
+						return S;
 
 					case R_X86_64_GLOB_DAT:
 					case R_X86_64_JUMP_SLOT:
@@ -158,6 +186,7 @@ struct Relocator : private ELF_Def::Constants {
 
 					case R_X86_64_RELATIVE:
 					case R_X86_64_RELATIVE64:
+					case R_X86_64_IRELATIVE:
 						return B + A;
 
 					case R_X86_64_GOTPCREL:
@@ -174,13 +203,6 @@ struct Relocator : private ELF_Def::Constants {
 					case R_X86_64_SIZE32:
 					case R_X86_64_SIZE64:
 						return Z + A;
-
-					case R_X86_64_IRELATIVE:
-					{
-						typedef uintptr_t (*indirect_t)();
-						indirect_t func = reinterpret_cast<indirect_t>(B + A);
-						return func();
-					}
 
 					case R_X86_64_TPOFF64:
 						assert(tls_module_id != 0 && tls_offset != 0);
@@ -202,6 +224,34 @@ struct Relocator : private ELF_Def::Constants {
 					assert(false);
 					return 0;
 			}
+	}
+
+	inline uintptr_t value(uintptr_t base, uintptr_t plt_entry = 0, uintptr_t tls_module_id = 0, intptr_t tls_offset = 0) const {
+		return value(base, entry.symbol(), base, plt_entry, tls_module_id, tls_offset);
+	}
+
+	/*! \brief Get relocation fix value (for external symbol)
+	 * \note Perform memcopy or call indirect function if required
+	 * \param base Base address in target memory of the object to which this relocation belongs to
+	 * \param symbol (External) Symbol (from another object)
+	 * \param symbol_base base address of the object providing the external symbol
+	 * \param plt_entry PLT entry of the symbol
+	 * \param tls_module_id TLS module ID of (external) symbol
+	 * \param tls_offset TLS offset (from thread pointer / %fs) of (external) symbol
+	 */
+	template<typename Symbol>
+	inline uintptr_t value_external(uintptr_t base, const Symbol & symbol, uintptr_t symbol_base, uintptr_t plt_entry = 0, uintptr_t tls_module_id = 0, intptr_t tls_offset = 0) const {
+		auto v = value(base, symbol, symbol_base, plt_entry, tls_module_id, tls_offset);
+		if (is_copy()) {
+			memcpy(reinterpret_cast<void*>(address(base)), reinterpret_cast<void*>(v), symbol.size());
+			return 0;
+		} else if (symbol.type() == STT_GNU_IFUNC || is_indirect()) {
+			typedef uintptr_t (*indirect_t)();
+			indirect_t func = reinterpret_cast<indirect_t>(v);
+			return func();
+		} else {
+			return v;
+		}
 	}
 
 	/*! \brief Get relocation fix value for internal symbol

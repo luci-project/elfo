@@ -240,12 +240,12 @@ class Dump {
 	}
 
 	void symbols(const Array<Symbol> & symbols) const {
-		cout << "   Num Value              Size  Type        Bind         Vis          Ndx Name" << endl;
+		cout << "   Num Value              Size  Type           Bind         Vis          Ndx Name" << endl;
 		for (auto & sym: symbols) {
 			cout << " " << DECPAD(5) << symbols.index(sym)
 			     << " " << HEXPAD(16) << sym.value()
 			     << " " << DECPAD(5) << sym.size()
-			     << " " << PAD(11) << sym.type()
+			     << " " << PAD(14) << sym.type()
 			     << " " << PAD(12) << sym.bind()
 			     << " " << PAD(12) << sym.visibility()
 			     << " ";
