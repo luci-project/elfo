@@ -1,17 +1,12 @@
-#ifdef USE_DLH
-#include <dlh/stream/output.hpp>
-#include <dlh/unistd.hpp>
-#include <dlh/string.hpp>
-#define vector Vector
-#else
+#ifndef USE_DLH
 #include <sys/mman.h>
 #include <sys/stat.h>
+using namespace std;
+#endif
+#include <iostream>
 #include <fcntl.h>
 #include <unistd.h>
 #include <cstring>
-#include <iostream>
-using namespace std;
-#endif
 
 #include <elfo/elf.hpp>
 

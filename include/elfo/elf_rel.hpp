@@ -248,7 +248,8 @@ struct Relocator : private ELF_Def::Constants {
 		} else if (symbol.type() == STT_GNU_IFUNC || is_indirect()) {
 			typedef uintptr_t (*indirect_t)();
 			indirect_t func = reinterpret_cast<indirect_t>(v);
-			return func();
+			auto r = func();
+			return r;
 		} else {
 			return v;
 		}

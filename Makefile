@@ -13,7 +13,7 @@ DEPFILES := $(addprefix $(BUILDDIR)/,$(addsuffix .d,$(TARGETS)))
 LDFLAGS :=
 
 ifdef DLH
-CXXFLAGS += -std=c++17 -I $(DLH)/include -L $(DLH) -DUSE_DLH
+CXXFLAGS += -std=c++17 -I $(DLH)/legacy -I $(DLH)/include -L $(DLH) -DUSE_DLH
 CXXFLAGS += -fno-exceptions -fno-rtti -fno-use-cxa-atexit -no-pie
 CXXFLAGS += -nostdlib -nostdinc
 LDFLAGS += -ldlh

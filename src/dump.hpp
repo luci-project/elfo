@@ -1,22 +1,20 @@
 #pragma once
 
 #ifdef USE_DLH
-#include <dlh/types.hpp>
-#include <dlh/stream/output.hpp>
-#include <dlh/utils/file.hpp>
+#include <dlh/file.hpp>
 #else
+#include <fstream>
+using namespace std;
+#endif
 #include <iostream>
 #include <iomanip>
-#include <fstream>
 #include <cstdint>
-#endif
+#include <cstring>
 
 #include <elfo/elf.hpp>
 
 #include "_str_const.hpp"
 #include "_str_ident.hpp"
-
-using namespace std;
 
 #define PAD(LEN) dec << left << setfill(' ') << setw(LEN)
 #define RESET() dec << left << setw(0)

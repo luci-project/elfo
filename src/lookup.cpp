@@ -1,24 +1,21 @@
 #ifdef USE_DLH
 #include <dlh/container/vector.hpp>
-#include <dlh/stream/output.hpp>
-#include <dlh/utils/strptr.hpp>
-#include <dlh/unistd.hpp>
-#include <dlh/alloc.hpp>
 #define vector Vector
 #else
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <cxxabi.h>
+#include <vector>
+using namespace std;
+#endif
+
 #include <unistd.h>
 #include <fcntl.h>
 #include <cstring>
 #include <cstdio>
 #include <cstdlib>
-#include <cxxabi.h>
 #include <iostream>
 #include <iomanip>
-#include <vector>
-using namespace std;
-#endif
 
 #include "elf_dyn.hpp"
 

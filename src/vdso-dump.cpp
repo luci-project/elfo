@@ -2,16 +2,16 @@
 
 #ifdef USE_DLH
 #include <dlh/stream/output.hpp>
-#include <dlh/utils/auxiliary.hpp>
+#include <dlh/auxiliary.hpp>
 #else
 #include <sys/auxv.h>
 #include <sys/types.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <unistd.h>
 #include <iostream>
 using namespace std;
 #endif
+#include <fcntl.h>
+#include <errno.h>
+#include <unistd.h>
 
 int main(int argc, char * argv[]) {
 	if (argc != 2) {
