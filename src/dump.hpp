@@ -377,7 +377,7 @@ class Dump {
 
 	void section_header() const {
 		cout << "Section Headers:" << endl
-		     << "  [Nr] Name                Type            Address            Off      Size     EnSz Flg Lk Inf Al" << endl;
+		     << "  [Nr] Name                Type             Address            Off      Size     EnSz Flg Lk Inf Al" << endl;
 
 		// Section
 		for (auto & section: elf.sections) {
@@ -398,12 +398,12 @@ class Dump {
 
 			cout << "  [" << DECPAD(2) << elf.sections.index(section) << "]"
 			     << " " << PAD(19) << section.name()
-			     << " " << PAD(15) << section.type()
+			     << " " << PAD(16) << section.type()
 			     << " " << HEXPAD(16) << section.virt_addr()
 			     << " " << HEXPAD(6) << section.offset()
 			     << " " << HEXPAD(6) << section.size()
 			     << " " << HEXPAD(2) << section.entry_size()
-			     << " " << DECPAD(3) << flags
+			     << " " << DECPAD(3) << flagsbuf
 			     << " " << DECPAD(2) << section.link()
 			     << " " << DECPAD(3) << section.info()
 			     << " " << DECPAD(2) << section.alignment()
