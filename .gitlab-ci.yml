@@ -1,6 +1,6 @@
 build-test:
   image: inf4/stubs:gcc-x64
-  before-script:
+  before_script:
     - apt-get update && apt-get install -y python3 python3-pyparsing
   script:
     - make
