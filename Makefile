@@ -12,6 +12,10 @@ TARGETS := $(notdir $(SOURCES:%.cpp=%))
 DEPFILES := $(addprefix $(BUILDDIR)/,$(addsuffix .d,$(TARGETS)))
 LDFLAGS :=
 
+TESTFOLDER = test
+TESTTARGET = $(TESTFOLDER)/h2g2
+TESTS := $(patsubst $(TESTFOLDER)/%.stdout,test-%,$(wildcard $(TESTFOLDER)/*.stdout))
+
 ifdef DLH
 CXXFLAGS += -std=c++17 -I $(DLH)/legacy -I $(DLH)/include -L $(DLH) -DUSE_DLH
 CXXFLAGS += -fno-exceptions -fno-rtti -fno-use-cxa-atexit -no-pie
@@ -19,7 +23,13 @@ CXXFLAGS += -nostdlib -nostdinc
 LDFLAGS += -ldlh
 endif
 
-all: $(TARGETS)
+all: $(TARGETS) $(TESTS)
+
+test: $(TESTS)
+
+test-%: $(TESTFOLDER)/%.stdout % $(TESTTARGET)
+	@echo "Test		$*"
+	@./$* $(TESTTARGET) | diff -w $< -
 
 $(BUILDDIR)/%.d: $(SRCFOLDER)/%.cpp  $(SRCFOLDER)/_str_const.hpp $(SRCFOLDER)/_str_ident.hpp $(BUILDDIR) $(MAKEFILE_LIST)
 	@echo "DEP		$<"
@@ -56,4 +66,4 @@ ifneq ($(MAKECMDGOALS),clean)
 -include $(DEPFILES)
 endif
 
-.PHONY: all clean mrproper
+.PHONY: all test clean mrproper

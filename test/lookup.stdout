@@ -1,0 +1,189 @@
+Symbol [1] '_ZSt4endlIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_':
+  Demangled: std::basic_ostream<char, std::char_traits<char> >& std::endl<char, std::char_traits<char> >(std::basic_ostream<char, std::char_traits<char> >&)
+      Value: 0x0000000000000000
+       Size: 0 Bytes
+       Type: STT_FUNC 
+       Bind: STB_GLOBAL 
+ Visibility: STV_DEFAULT 
+    Section: UND
+    Version: 3 (GLIBCXX_3.4)
+ PLT Reloc.: Offset 0x3f90
+             Type R_X86_64_JUMP_SLOT 
+             Addend 0
+
+Symbol [2] '_ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEED1Ev':
+  Demangled: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::~basic_string()
+      Value: 0x0000000000000000
+       Size: 0 Bytes
+       Type: STT_FUNC 
+       Bind: STB_GLOBAL 
+ Visibility: STV_DEFAULT 
+    Section: UND
+    Version: 4 (GLIBCXX_3.4.21)
+ Relocation: Offset 0x3fd0
+             Type R_X86_64_GLOB_DAT 
+             Addend 0
+
+Symbol [3] '__cxa_atexit':
+      Value: 0x0000000000000000
+       Size: 0 Bytes
+       Type: STT_FUNC 
+       Bind: STB_GLOBAL 
+ Visibility: STV_DEFAULT 
+    Section: UND
+    Version: 2 (GLIBC_2.2.5)
+ PLT Reloc.: Offset 0x3f98
+             Type R_X86_64_JUMP_SLOT 
+             Addend 0
+
+Symbol [4] '__stack_chk_fail':
+      Value: 0x0000000000000000
+       Size: 0 Bytes
+       Type: STT_FUNC 
+       Bind: STB_GLOBAL 
+ Visibility: STV_DEFAULT 
+    Section: UND
+    Version: 5 (GLIBC_2.4)
+ PLT Reloc.: Offset 0x3fa0
+             Type R_X86_64_JUMP_SLOT 
+             Addend 0
+
+Symbol [5] '_ZSt16__ostream_insertIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_PKS3_l':
+  Demangled: std::basic_ostream<char, std::char_traits<char> >& std::__ostream_insert<char, std::char_traits<char> >(std::basic_ostream<char, std::char_traits<char> >&, char const*, long)
+      Value: 0x0000000000000000
+       Size: 0 Bytes
+       Type: STT_FUNC 
+       Bind: STB_GLOBAL 
+ Visibility: STV_DEFAULT 
+    Section: UND
+    Version: 6 (GLIBCXX_3.4.9)
+ PLT Reloc.: Offset 0x3fa8
+             Type R_X86_64_JUMP_SLOT 
+             Addend 0
+
+Symbol [6] '_ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC1EPKcRKS3_':
+  Demangled: std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::basic_string(char const*, std::allocator<char> const&)
+      Value: 0x0000000000000000
+       Size: 0 Bytes
+       Type: STT_FUNC 
+       Bind: STB_GLOBAL 
+ Visibility: STV_DEFAULT 
+    Section: UND
+    Version: 4 (GLIBCXX_3.4.21)
+ PLT Reloc.: Offset 0x3fb0
+             Type R_X86_64_JUMP_SLOT 
+             Addend 0
+
+Symbol [7] '_ZNSt8ios_base4InitC1Ev':
+  Demangled: std::ios_base::Init::Init()
+      Value: 0x0000000000000000
+       Size: 0 Bytes
+       Type: STT_FUNC 
+       Bind: STB_GLOBAL 
+ Visibility: STV_DEFAULT 
+    Section: UND
+    Version: 3 (GLIBCXX_3.4)
+ PLT Reloc.: Offset 0x3fb8
+             Type R_X86_64_JUMP_SLOT 
+             Addend 0
+
+Symbol [8] '_ZNSolsEi':
+  Demangled: std::ostream::operator<<(int)
+      Value: 0x0000000000000000
+       Size: 0 Bytes
+       Type: STT_FUNC 
+       Bind: STB_GLOBAL 
+ Visibility: STV_DEFAULT 
+    Section: UND
+    Version: 3 (GLIBCXX_3.4)
+ PLT Reloc.: Offset 0x3fc0
+             Type R_X86_64_JUMP_SLOT 
+             Addend 0
+
+Symbol [9] '_ITM_deregisterTMCloneTable':
+      Value: 0x0000000000000000
+       Size: 0 Bytes
+       Type: STT_NOTYPE 
+       Bind: STB_WEAK 
+ Visibility: STV_DEFAULT 
+    Section: UND
+    Version: 0 (*local*)
+ Relocation: Offset 0x3fd8
+             Type R_X86_64_GLOB_DAT 
+             Addend 0
+
+Symbol [10] '__libc_start_main':
+      Value: 0x0000000000000000
+       Size: 0 Bytes
+       Type: STT_FUNC 
+       Bind: STB_GLOBAL 
+ Visibility: STV_DEFAULT 
+    Section: UND
+    Version: 2 (GLIBC_2.2.5)
+ Relocation: Offset 0x3fe0
+             Type R_X86_64_GLOB_DAT 
+             Addend 0
+
+Symbol [11] '__gmon_start__':
+      Value: 0x0000000000000000
+       Size: 0 Bytes
+       Type: STT_NOTYPE 
+       Bind: STB_WEAK 
+ Visibility: STV_DEFAULT 
+    Section: UND
+    Version: 0 (*local*)
+ Relocation: Offset 0x3fe8
+             Type R_X86_64_GLOB_DAT 
+             Addend 0
+
+Symbol [12] '_ITM_registerTMCloneTable':
+      Value: 0x0000000000000000
+       Size: 0 Bytes
+       Type: STT_NOTYPE 
+       Bind: STB_WEAK 
+ Visibility: STV_DEFAULT 
+    Section: UND
+    Version: 0 (*local*)
+ Relocation: Offset 0x3ff0
+             Type R_X86_64_GLOB_DAT 
+             Addend 0
+
+Symbol [13] '_ZNSt8ios_base4InitD1Ev':
+  Demangled: std::ios_base::Init::~Init()
+      Value: 0x0000000000000000
+       Size: 0 Bytes
+       Type: STT_FUNC 
+       Bind: STB_GLOBAL 
+ Visibility: STV_DEFAULT 
+    Section: UND
+    Version: 3 (GLIBCXX_3.4)
+ Relocation: Offset 0x3ff8
+             Type R_X86_64_GLOB_DAT 
+             Addend 0
+
+Symbol [14] '__cxa_finalize':
+      Value: 0x0000000000000000
+       Size: 0 Bytes
+       Type: STT_FUNC 
+       Bind: STB_WEAK 
+ Visibility: STV_DEFAULT 
+    Section: UND
+    Version: 2 (GLIBC_2.2.5)
+ Relocation: Offset 0x3fc8
+             Type R_X86_64_GLOB_DAT 
+             Addend 0
+
+Symbol [15] '_ZSt4cout':
+  Demangled: std::cout
+      Value: 0x0000000000004040
+       Size: 272 Bytes
+       Type: STT_OBJECT 
+       Bind: STB_GLOBAL 
+ Visibility: STV_DEFAULT 
+    Section: 26 (.bss)
+    Version: 3 (GLIBCXX_3.4)
+ Relocation: Offset 0x4040
+             Type R_X86_64_COPY 
+             Addend 0
+
+(16 dynamic symbols in file)

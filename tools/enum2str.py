@@ -62,4 +62,4 @@ for item, _, _ in enum.scanString(sys.stdin.read()):
             values.add(val)
             enums.add(f'{ident}::{entry.name}')
         val += 1
-    print(fend.format(ident = ident, enum = item.enum, list = ', '.join(enums)))
+    print(fend.format(ident = ident, enum = item.enum, list = ', '.join(sorted(enums))))
