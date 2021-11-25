@@ -215,6 +215,14 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \return Accessor for element
 		 */
 		A operator[](size_t idx) const {
+			return this->_accessor_value(this->_accessor, this->_accessor.next(idx));
+		}
+
+		/*! \brief Access with boundary checking
+		 * \param idx index
+		 * \return Accessor for element
+		 */
+		A at(size_t idx) const {
 			assert(this->_accessor.next(idx) < this->_end);
 			return this->_accessor_value(this->_accessor, this->_accessor.next(idx));
 		}
@@ -263,6 +271,15 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \return Accessor for element
 		 */
 		A operator[](size_t idx) const {
+			return at(idx);
+		}
+
+		/*! \brief Array-like access
+		 * \note O(n) complexity!
+		 * \param idx index
+		 * \return Accessor for element
+		 */
+		A at(size_t idx) const {
 			for (const auto & entry : *this)
 				if (idx-- == 0)
 					return entry;
@@ -486,7 +503,7 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \param ptr Pointer to the memory containting the current symbol
 		 */
 		Symbol(const ELF<C> & elf, uint16_t strtab, void * ptr = nullptr)
-		  : Symbol{elf, elf.sections[strtab], ptr} {}
+		  : Symbol{elf, elf.sections.at(strtab), ptr} {}
 
 		/*! \brief Construct symbol
 		 * \param elf ELF object to which this symbol belongs to
@@ -534,7 +551,7 @@ class ELF : public ELF_Def::Structures<C> {
 
 		/*! \brief Section containing the symbol  */
 		Section section() const {
-			return this->_elf.sections[section_index()];
+			return this->_elf.sections.at(section_index());
 		}
 
 		/*! \brief Symbol info (including type and binding) */
@@ -686,11 +703,11 @@ class ELF : public ELF_Def::Structures<C> {
 	 private:
 		/*! \brief Helper constructor */
 		SymbolTable(const ELF<C> & elf, bool use_hash, const Section & section, const Section & version_section)
-		  : SymbolTable{elf, section.type(), use_hash ? section.data() : nullptr, use_hash ? elf.sections[section.link()] : section, version_section} {}
+		  : SymbolTable{elf, section.type(), use_hash ? section.data() : nullptr, use_hash ? elf.sections.at(section.link()) : section, version_section} {}
 
 		/*! \brief Helper constructor */
 		SymbolTable(const ELF<C> & elf, const typename Def::shdr_type section_type, void * header, const Section & symbol_section, const Section & version_section)
-		  : SymbolTable{elf, section_type, header, elf.data(symbol_section.offset()), symbol_section.entries(), version_section.type() == Def::SHT_GNU_VERSYM ? version_section.get_versions() : nullptr, elf.sections[symbol_section.link()].offset()} {
+		  : SymbolTable{elf, section_type, header, elf.data(symbol_section.offset()), symbol_section.entries(), version_section.type() == Def::SHT_GNU_VERSYM ? version_section.get_versions() : nullptr, elf.sections.at(symbol_section.link()).offset()} {
 			assert(section_type == Def::SHT_GNU_HASH || section_type == Def::SHT_HASH || section_type == Def::SHT_DYNSYM || section_type == Def::SHT_SYMTAB);
 			assert(section_type == Def::SHT_DYNSYM || section_type == Def::SHT_SYMTAB || header != nullptr);
 		}
@@ -785,7 +802,7 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \param ptr Pointer to the memory containting the current relocation
 		 */
 		RelocationWithoutAddend(const ELF<C> & elf, uint16_t symtab, void * ptr = nullptr)
-		  : RelocationWithoutAddend{elf, elf.sections[symtab], ptr} {}
+		  : RelocationWithoutAddend{elf, elf.sections.at(symtab), ptr} {}
 
 		/*! \brief Construct relocation entry (without addend)
 		 * \param elf ELF object to which this relocation belongs to
@@ -793,9 +810,9 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \param ptr Pointer to the memory containting the current relocation
 		 */
 		RelocationWithoutAddend(const ELF<C> & elf, const Section & symtab, void * ptr = nullptr)
-		  : RelocationWithoutAddend{elf, symtab.offset(), elf.sections[symtab.link()].offset(), ptr} {
+		  : RelocationWithoutAddend{elf, symtab.offset(), elf.sections.at(symtab.link()).offset(), ptr} {
 			assert(symtab.type() == Def::SHT_SYMTAB || symtab.type() == Def::SHT_DYNSYM);
-			assert(elf.sections[symtab.link()].type() == Def::SHT_STRTAB);
+			assert(elf.sections.at(symtab.link()).type() == Def::SHT_STRTAB);
 		}
 
 		/*! \brief Construct relocation entry (without addend)
@@ -856,7 +873,7 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \param ptr Pointer to the memory containting the current relocation
 		 */
 		RelocationWithAddend(const ELF<C> & elf, uint16_t symtab, void * ptr = nullptr)
-		  : RelocationWithAddend{elf, elf.sections[symtab], ptr} {}
+		  : RelocationWithAddend{elf, elf.sections.at(symtab), ptr} {}
 
 		/*! \brief Construct relocation entry (with addend)
 		 * \param elf ELF object to which this relocation belongs to
@@ -864,9 +881,9 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \param ptr Pointer to the memory containting the current relocation
 		 */
 		RelocationWithAddend(const ELF<C> & elf, const Section & symtab, void * ptr = nullptr)
-		  : RelocationWithAddend{elf, symtab.offset(), elf.sections[symtab.link()].offset(), ptr} {
+		  : RelocationWithAddend{elf, symtab.offset(), elf.sections.at(symtab.link()).offset(), ptr} {
 			assert(symtab.type() == Def::SHT_SYMTAB || symtab.type() == Def::SHT_DYNSYM);
-			assert(elf.sections[symtab.link()].type() == Def::SHT_STRTAB);
+			assert(elf.sections.at(symtab.link()).type() == Def::SHT_STRTAB);
 		}
 
 		/*! \brief Construct relocation entry (with addend)
@@ -931,7 +948,7 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \param ptr Pointer to the memory containting the current relocation
 		 */
 		Relocation(const ELF<C> & elf, uint16_t symtab, bool withAddend, void * ptr = nullptr)
-		  : Relocation{elf, elf.sections[symtab], withAddend, ptr} {}
+		  : Relocation{elf, elf.sections.at(symtab), withAddend, ptr} {}
 
 		/*! \brief Construct relocation entry (with addend)
 		 * \param elf ELF object to which this relocation belongs to
@@ -940,9 +957,9 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \param ptr Pointer to the memory containting the current relocation
 		 */
 		Relocation(const ELF<C> & elf, const Section & symtab, bool withAddend, void * ptr = nullptr)
-		  : Relocation{elf, symtab.offset(), elf.sections[symtab.link()].offset(), withAddend, ptr} {
+		  : Relocation{elf, symtab.offset(), elf.sections.at(symtab.link()).offset(), withAddend, ptr} {
 			assert(symtab.type() == Def::SHT_SYMTAB || symtab.type() == Def::SHT_DYNSYM);
-			assert(elf.sections[symtab.link()].type() == Def::SHT_STRTAB);
+			assert(elf.sections.at(symtab.link()).type() == Def::SHT_STRTAB);
 		}
 
 		/*! \brief Construct relocation entry
@@ -1031,7 +1048,7 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \param ptr Pointer to the memory containting the current relocation
 		 */
 		Dynamic(const ELF<C> & elf, uint16_t strtab, void * ptr = nullptr)
-		  : Dynamic{elf, elf.sections[strtab], ptr} {}
+		  : Dynamic{elf, elf.sections.at(strtab), ptr} {}
 
 		/*! \brief construct dynamic table entry
 		 * \param elf ELF object to which this symbol belongs to
@@ -1207,7 +1224,7 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \param ptr Pointer to the memory containting the current symbol
 		 */
 		VersionDefinition(const ELF<C> & elf, uint16_t strtab, void * ptr = nullptr)
-		  : VersionDefinition{elf, elf.sections[strtab], ptr} {}
+		  : VersionDefinition{elf, elf.sections.at(strtab), ptr} {}
 
 		/*! \brief Construct version definition entry
 		 * \param elf ELF object to which this entry belongs to
@@ -1346,7 +1363,7 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \param ptr Pointer to the memory containting the current needed version
 		 */
 		VersionNeeded(const ELF<C> & elf, uint16_t strtab, void * ptr = nullptr)
-		  : VersionNeeded{elf, elf.sections[strtab], ptr} {}
+		  : VersionNeeded{elf, elf.sections.at(strtab), ptr} {}
 
 		/*! \brief Construct version needed entry
 		 * \param elf ELF object to which this entry belongs to
@@ -1436,9 +1453,9 @@ class ELF : public ELF_Def::Structures<C> {
 		 * similar to dynamic array, but offering easy access functions to its contents
 		 */
 		DynamicTable(const ELF<C> & elf, const Section & section)
-		  : DynamicTable{elf, section.data(), section.dynamic_entries(), elf.sections[section.link()].offset(), section.virt_addr() != section.offset(), this->_elf.header.type() == Def::ET_EXEC} {
+		  : DynamicTable{elf, section.data(), section.dynamic_entries(), elf.sections.at(section.link()).offset(), section.virt_addr() != section.offset(), this->_elf.header.type() == Def::ET_EXEC} {
 			assert(section.type() == Def::SHT_DYNAMIC);
-			assert(elf.sections[section.link()].type() == Def::SHT_STRTAB);
+			assert(elf.sections.at(section.link()).type() == Def::SHT_STRTAB);
 		}
 
 		/*! \brief Raw dynamic table
@@ -1849,12 +1866,19 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \return Dynamic entry
 		 */
 		inline Dynamic operator[](typename Def::dyn_tag tag) const {
+			return at(tag);
+		}
+
+		/*! \brief Access (first) dynamic entry
+		 * \param tag dynamic tag to search
+		 * \return Dynamic entry
+		 */
+		inline Dynamic at(typename Def::dyn_tag tag) const {
 			for (const auto & dyn : *this)
 				if (dyn.tag() == tag)
 					return dyn;
 			return Dynamic{elf()};  // 0 == UNDEF
 		}
-
 	 private:
 		friend struct Segment;
 
@@ -2270,7 +2294,7 @@ class ELF : public ELF_Def::Structures<C> {
 	 * \return Symbol
 	 */
 	Symbol symbol(uint16_t section_index, uint32_t index) const {
-		return symbol(sections[section_index], index);
+		return symbol(sections.at(section_index), index);
 	}
 
 	/*! \brief Get string
@@ -2298,7 +2322,7 @@ class ELF : public ELF_Def::Structures<C> {
 	 * \return String
 	 */
 	const char * string(uint16_t section_index, uint32_t offset) const {
-		return string(sections[section_index], offset);
+		return string(sections.at(section_index), offset);
 	}
 
 	/*! \brief Calculate size of Elf

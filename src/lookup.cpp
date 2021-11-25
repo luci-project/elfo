@@ -69,7 +69,7 @@ static void elfsymbol(const ELF_Dyn<C> & elf, const typename ELF_Dyn<C>::Symbol 
 		case ELF_Dyn<C>::SHN_ABS:    cout << "ABS"; break;
 		case ELF_Dyn<C>::SHN_COMMON: cout << "CMN"; break;
 		case ELF_Dyn<C>::SHN_XINDEX: cout << "XDX"; break;
-		default: cout << sym.section_index() << " (" << elf.sections[sym.section_index()].name() << ")";
+		default: cout << sym.section_index() << " (" << elf.sections.at(sym.section_index()).name() << ")";
 	}
 
 	auto version = elf.symbols.version(index);
@@ -115,7 +115,7 @@ static  bool elflookup(void * addr, size_t length, const vector<char*> & symbols
 			// Find symbol
 			auto idx = elf.symbols.index(name, version);
 			if (idx != ELF_Dyn<C>::STN_UNDEF) {
-				elfsymbol(elf, elf.symbols[idx]);
+				elfsymbol(elf, elf.symbols.at(idx));
 				found++;
 			} else {
 				cerr << "Symbol '" << name << "' not found!" << endl;
