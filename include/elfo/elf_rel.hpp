@@ -205,7 +205,7 @@ struct Relocator : private ELF_Def::Constants {
 						return Z + A;
 
 					case R_X86_64_TPOFF64:
-						assert(tls_module_id != 0 && tls_offset != 0);
+						assert((tls_module_id != 0 && tls_offset != 0) || (/* for Bean */ base == 0 && symbol_base == 0));
 						return symbol.value() + A - tls_offset;
 
 					case R_X86_64_DTPMOD64:
