@@ -2,13 +2,15 @@ VERBOSE = @
 
 SRCFOLDER = src
 BUILDDIR ?= .build
+BINPREFIX = elfo-
 
 CXXFLAGS ?= -Og -g
 CXXFLAGS += -I include/
 CXXFLAGS += -Wall -Wextra -Wno-switch -Wno-unused-variable -Wno-comment
 
+
 SOURCES := $(wildcard $(SRCFOLDER)/*.cpp)
-TARGETS := $(notdir $(SOURCES:%.cpp=%))
+TARGETS := $(addprefix $(BINPREFIX),$(notdir $(SOURCES:%.cpp=%)))
 DEPFILES := $(addprefix $(BUILDDIR)/,$(addsuffix .d,$(TARGETS)))
 LDFLAGS :=
 
@@ -27,15 +29,15 @@ all: $(TARGETS) $(TESTS)
 
 test: $(TESTS)
 
-test-%: $(TESTFOLDER)/%.stdout % $(TESTTARGET)
+test-%: $(TESTFOLDER)/%.stdout $(BINPREFIX)% $(TESTTARGET)
 	@echo "Test		$*"
-	@./$* $(TESTTARGET) | diff -w $< -
+	@./$(BINPREFIX)$* $(TESTTARGET) | diff -w $< -
 
 $(BUILDDIR)/%.d: $(SRCFOLDER)/%.cpp  $(SRCFOLDER)/_str_const.hpp $(SRCFOLDER)/_str_ident.hpp $(BUILDDIR) $(MAKEFILE_LIST)
 	@echo "DEP		$<"
 	$(VERBOSE) $(CXX) $(CXXFLAGS) -MM -MP -MT $* -MF $@ $<
 
-%: $(SRCFOLDER)/%.cpp $(SRCFOLDER)/_str_const.hpp $(SRCFOLDER)/_str_ident.hpp $(MAKEFILE_LIST)
+$(BINPREFIX)%: $(SRCFOLDER)/%.cpp $(SRCFOLDER)/_str_const.hpp $(SRCFOLDER)/_str_ident.hpp $(MAKEFILE_LIST)
 	@echo "CXX		$@"
 	$(VERBOSE) $(CXX) $(CXXFLAGS) -o $@ $< $(LDFLAGS)
 

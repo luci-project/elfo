@@ -1,7 +1,3 @@
 .build
 src/_str_*.hpp
-dump
-dynamic-dump
-lookup
-setinterp
-vdso-dump
+elfo-*
