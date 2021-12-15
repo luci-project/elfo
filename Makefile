@@ -4,7 +4,7 @@ SRCFOLDER = src
 BUILDDIR ?= .build
 BINPREFIX = elfo-
 
-CXXFLAGS ?= -Og -g
+CXXFLAGS ?= -Og -g -static-pie
 CXXFLAGS += -I include/
 CXXFLAGS += -Wall -Wextra -Wno-switch -Wno-unused-variable -Wno-comment
 

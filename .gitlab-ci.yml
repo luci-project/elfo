@@ -4,4 +4,7 @@ build-test:
     - apt-get update && apt-get install -y python3 python3-pyparsing
   script:
     - make
+  artifacts:
+    paths:
+      - "elfo-*"
 
