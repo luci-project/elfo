@@ -8,6 +8,7 @@ CXXFLAGS ?= -Og -g -static-pie
 CXXFLAGS += -I include/
 CXXFLAGS += -Wall -Wextra -Wno-switch -Wno-unused-variable -Wno-comment
 
+INSTALLDIR ?= $(HOME)/.local/bin
 
 SOURCES := $(wildcard $(SRCFOLDER)/*.cpp)
 TARGETS := $(addprefix $(BINPREFIX),$(notdir $(SOURCES:%.cpp=%)))
@@ -52,6 +53,12 @@ endef
 
 $(eval $(call include_str_template,elf_def/const.hpp,ELF_Def Constants))
 $(eval $(call include_str_template,elf_def/ident.hpp,ELF_Def Identification))
+
+install: $(TARGETS)
+	$(VERBOSE) install -Dm755 $^ $(INSTALLDIR)
+	$(VERBOSE) if ! echo "$(PATH)" | grep "$(INSTALLDIR)" >/dev/null 2>&1 ; then \
+		echo "You have to add '$(INSTALLDIR)' to PATH!" ; \
+	fi
 
 clean::
 	$(VERBOSE) rm -f $(DEPFILES)
