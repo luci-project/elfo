@@ -2118,11 +2118,18 @@ class ELF : public ELF_Def::Structures<C> {
 		}
 
 		/*! \brief Get contents of symbol table section
+		 */
+		SymbolTable get_symbol_table() const {
+			assert(type() == Def::SHT_SYMTAB || type() == Def::SHT_DYNSYM || type() == Def::SHT_HASH || type() == Def::SHT_GNU_HASH);
+			return SymbolTable{this->_elf, *this};
+		}
+
+		/*! \brief Get contents of symbol table section
 		 * \param version Pointer to version section (if available)
 		 */
-		SymbolTable get_symbol_table(const Section * const version = nullptr) const {
-			assert(type() == Def::SHT_SYMTAB || type() == Def::SHT_DYNSYM || type() == Def::SHT_HASH || type() == Def::SHT_GNUHASH);
-			return SymbolTable{this->_elf, *this, version};
+		SymbolTable get_symbol_table(const Section & version_section) const {
+			assert(type() == Def::SHT_SYMTAB || type() == Def::SHT_DYNSYM || type() == Def::SHT_HASH || type() == Def::SHT_GNU_HASH);
+			return SymbolTable{this->_elf, *this, version_section};
 		}
 
 		/*! \brief Get contents of dynamic secion */
@@ -2206,8 +2213,8 @@ class ELF : public ELF_Def::Structures<C> {
 	    sections{Section{*this}, data(header.e_shoff), header.e_shnum} {
 		assert(address != 0);
 		assert(sizeof(Header) == header.e_ehsize);
-		assert(sizeof(typename Def::Phdr) == header.e_phentsize);
-		assert(sizeof(typename Def::Shdr) == header.e_shentsize);
+		assert(sizeof(typename Def::Phdr) == header.e_phentsize || header.e_phnum == 0);
+		assert(sizeof(typename Def::Shdr) == header.e_shentsize || header.e_shnum == 0);
 	}
 
 	/*! \brief Construct new ELF object
@@ -2273,6 +2280,17 @@ class ELF : public ELF_Def::Structures<C> {
 			if (s.type() == Def::PT_INTERP)
 				return s.path();
 		return nullptr;
+	}
+
+	/*! \brief Get symbol table
+	 * \note a valid ELF file should not contain more than one symbol table!
+	 * \return Symbol Table
+	 */
+	SymbolTable symbol_table() const {
+		for (const auto &s : sections)
+			if (s.type() == Def::SHT_SYMTAB)
+				return s.get_symbol_table();
+		return SymbolTable{*this};
 	}
 
 	/*! \brief Get symbol
