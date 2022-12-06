@@ -1100,6 +1100,7 @@ class ELF : public ELF_Def::Structures<C> {
 		 */
 		Note(const ELF<C> & elf, uint16_t link, void * ptr = nullptr)
 		  : Accessor<typename Def::Nhdr>{elf, reinterpret_cast<typename Def::Nhdr *>(ptr)} {
+			(void) link;
 			assert(link == 0);
 		}
 
@@ -1119,6 +1120,7 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \param ptr Pointer to the memory containting the current note
 		 */
 		explicit Note(const ELF<C> & elf, uintptr_t offset = 0, void * ptr = nullptr) : Accessor<typename Def::Nhdr>(elf, reinterpret_cast<typename Def::Nhdr *>(ptr)) {
+			(void) offset;
 			assert(offset == 0);
 		}
 
@@ -1152,6 +1154,7 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \return pointer to next element
 		 */
 		typename Def::Nhdr * next(size_t i = 1) const {
+			(void) i;
 			assert(i == 1);
 			uintptr_t next = reinterpret_cast<uintptr_t>(this->_data)
 			               + sizeof(typename Def::Nhdr)
@@ -1196,6 +1199,7 @@ class ELF : public ELF_Def::Structures<C> {
 			 * \return pointer to next element or `nullptr` if end
 			 */
 			typename Def::Verdaux * next(size_t i = 1) const {
+				(void) i;
 				assert(i == 1);
 				return this->_data->vda_next == 0 ? nullptr : reinterpret_cast<typename Def::Verdaux*>(reinterpret_cast<uintptr_t>(this->_data) + this->_data->vda_next);
 			}
@@ -1209,6 +1213,7 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \return pointer to next element or `nullptr` if end
 		 */
 		typename Def::Verdef * next(size_t i = 1) const {
+			(void) i;
 			assert(i == 1);
 			uintptr_t next_adr = reinterpret_cast<uintptr_t>(this->_data) + this->_data->vd_next;
 			return this->_data->vd_next == 0 ? nullptr : reinterpret_cast<typename Def::Verdef*>(next_adr);
@@ -1335,6 +1340,7 @@ class ELF : public ELF_Def::Structures<C> {
 			 * \return pointer to next element or `nullptr` if end
 			 */
 			typename Def::Vernaux * next(size_t i = 1) const {
+				(void) i;
 				assert(i == 1);
 				return this->_data->vna_next == 0 ? nullptr : reinterpret_cast<typename Def::Vernaux*>(reinterpret_cast<uintptr_t>(this->_data) + this->_data->vna_next);
 			}
@@ -1348,6 +1354,7 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \return pointer to next element or `nullptr` if end
 		 */
 		typename Def::Verneed * next(size_t i = 1) const {
+			(void) i;
 			assert(i == 1);
 			uintptr_t next_adr = reinterpret_cast<uintptr_t>(this->_data) + this->_data->vn_next;
 			return this->_data->vn_next == 0 ? nullptr : reinterpret_cast<typename Def::Verneed*>(next_adr);
@@ -1436,6 +1443,7 @@ class ELF : public ELF_Def::Structures<C> {
 			 * \return pointer to next element or `nullptr` if end
 			 */
 			const typename Def::Dyn * next(size_t i = 1) const {
+				(void) i;
 				assert(i == 1);
 				return find(this->_data + 1, filter);
 			}
@@ -1604,6 +1612,7 @@ class ELF : public ELF_Def::Structures<C> {
 				}
 			}
 
+			(void) verdefnum;
 			if (verdef == 0) {
 				assert(verdefnum == 0);
 				return { VersionDefinition{elf()}, nullptr, nullptr };
@@ -1636,6 +1645,7 @@ class ELF : public ELF_Def::Structures<C> {
 				}
 			}
 
+			(void) verneednum;
 			if (verneed == 0) {
 				assert(verneednum == 0);
 				return { VersionNeeded{elf()}, nullptr, nullptr };
