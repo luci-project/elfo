@@ -385,7 +385,7 @@ struct Relocator : private ELF_Def::Constants {
 	 * \param base base address
 	 * \return target address
 	 */
-	inline uintptr_t address(uintptr_t base) const {
+	inline uintptr_t address(uintptr_t base = 0) const {
 		return base + entry.offset();
 	}
 
