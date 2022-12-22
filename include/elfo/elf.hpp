@@ -784,6 +784,7 @@ class ELF : public ELF_Def::Structures<C> {
 		 */
 		inline bool check_version(size_t idx, uint16_t required_version) const {
 			return required_version == Def::VER_NDX_GLOBAL
+			    || (versions[idx] & 0x7fff) == Def::VER_NDX_GLOBAL
 			    || versions == nullptr
 			    || required_version == (versions[idx] & 0x7fff);
 		}
