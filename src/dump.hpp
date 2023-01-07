@@ -612,7 +612,7 @@ class Dump {
 static bool dump(char * file, bool full = true) {
 #if USE_DLH
 	size_t length;
-	char * buf = File::contents(file, length);
+	char * buf = File::contents::get(file, length);
 	if (buf == nullptr)
 		return false;
 #else
