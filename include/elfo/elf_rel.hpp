@@ -330,6 +330,8 @@ struct Relocator : private ELF_Def::Constants {
 					case R_X86_64_GOT32:
 					case R_X86_64_PLT32:
 					case R_X86_64_GOTPCREL:
+					case R_X86_64_GOTPCRELX:
+					case R_X86_64_REX_GOTPCRELX:
 					case R_X86_64_32:
 					case R_X86_64_32S:
 					case R_X86_64_TLSGD:

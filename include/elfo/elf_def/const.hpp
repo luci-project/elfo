@@ -422,6 +422,8 @@ struct Constants {
 		R_X86_64_TLSDESC          = 36,
 		R_X86_64_IRELATIVE        = 37,
 		R_X86_64_RELATIVE64       = 38,
+		// Deprecated
+		// Deprecated
 		R_X86_64_GOTPCRELX        = 41,
 		R_X86_64_REX_GOTPCRELX    = 42,
 		R_X86_64_GNU_VTINHERIT    = 250,
