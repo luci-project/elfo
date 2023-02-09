@@ -17,7 +17,6 @@
 #include "elf_def/struct.hpp"
 #include "elf_def/types.hpp"
 
-
 /*! \brief Parser for data in the Executable and Linking Format
  * \tparam C 32- or 64-bit elf class
  */
@@ -2255,22 +2254,27 @@ class ELF : public ELF_Def::Structures<C> {
 
 	/*! \brief Check if this file seems to be valid (using file size and offsets)
 	 * \param file_size Length of memory mapped file
+	 * \param only_allocated limit to allocated data
 	 */
-	bool valid(size_t file_size) const {
+	bool valid(size_t file_size, bool only_allocated = false) const {
 		if (file_size < sizeof(Header)
 		 || !header.valid()
 		 || file_size < header.e_ehsize
-		 || file_size < header.e_phoff + header.e_phentsize * header.e_phnum
-		 || file_size < header.e_shoff + header.e_shentsize * header.e_shnum)
+		 || file_size < header.e_phoff + header.e_phentsize * header.e_phnum)
 			return false;
-
-		for (const auto & section : sections)
-			if (section.type() != Def::SHT_NOBITS && file_size < section.offset() + section.size())
-				return false;
 
 		for (const auto & segment : segments)
 			if (file_size < segment.offset() + segment.size())
 				return false;
+
+		if (!only_allocated) {
+			if (file_size < header.e_shoff + header.e_shentsize * header.e_shnum)
+				return false;
+
+			for (const auto & section : sections)
+				if (section.type() != Def::SHT_NOBITS && file_size < section.offset() + section.size())
+					return false;
+		}
 
 		return true;
 	}
