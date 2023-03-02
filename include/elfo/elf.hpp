@@ -1791,11 +1791,14 @@ class ELF : public ELF_Def::Structures<C> {
 			return get_func<func_init_t>(Def::DT_INIT_ARRAY, Def::DT_INIT_ARRAYSZ, offset);
 		}
 
-		/*! \brief run initialization */
-		void init(int argc, const char **argv, const char **envp, uintptr_t offset = 0) const {
+		/*! \brief run preinitialization */
+		void preinit(int argc, const char **argv, const char **envp, uintptr_t offset = 0) const {
 			for (const auto & f : get_preinit_array(offset))
 				f.data()(argc, argv, envp);
+		}
 
+		/*! \brief run initialization */
+		void init(int argc, const char **argv, const char **envp, uintptr_t offset = 0) const {
 			auto f = get_init_function(offset);
 			if (f != nullptr)
 				f(argc, argv, envp);
