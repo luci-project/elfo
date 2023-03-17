@@ -206,7 +206,6 @@ struct Relocator : private ELF_Def::Constants {
 
 					case R_X86_64_TPOFF32:
 					case R_X86_64_TPOFF64:
-						assert((tls_module_id != 0 && tls_offset != 0) || (/* for Bean */ base == 0 && symbol_base == 0));
 						return symbol.value() + A - tls_offset;
 
 					case R_X86_64_DTPMOD64:
@@ -244,10 +243,7 @@ struct Relocator : private ELF_Def::Constants {
 	template<typename Symbol>
 	inline uintptr_t value_external(uintptr_t base, const Symbol & symbol, uintptr_t symbol_base, uintptr_t plt_entry = 0, uintptr_t tls_module_id = 0, intptr_t tls_offset = 0) const {
 		auto v = value(base, symbol, symbol_base, plt_entry, tls_module_id, tls_offset);
-		if (is_copy()) {
-			memcpy(reinterpret_cast<void*>(address(base)), reinterpret_cast<void*>(v), symbol.size());
-			return 0;
-		} else if (symbol.type() == STT_GNU_IFUNC || is_indirect()) {
+		if (symbol.type() == STT_GNU_IFUNC || is_indirect()) {
 			typedef uintptr_t (*indirect_t)();
 			indirect_t func = reinterpret_cast<indirect_t>(v);
 			auto r = func();
@@ -452,6 +448,24 @@ struct Relocator : private ELF_Def::Constants {
 		}
 	}
 
+
+	/*! \brief Apply relocation for external symbol with a precalculated value
+	 * \param base Base address in target memory of the object to which this relocation belongs to
+	 * \param symbol (External) Symbol in another object
+	 * \param value precalculated value to be written in the relocation target
+	 * \return relocation value written to target
+	 */
+	template<typename Symbol>
+	inline uintptr_t fix_value_external(uintptr_t base, const Symbol & symbol, uintptr_t value) const {
+		if (is_copy()) {
+			memcpy(reinterpret_cast<void*>(address(base)), reinterpret_cast<void*>(value), symbol.size());
+			return value;
+		} else {
+			return write_value(base, value);
+		}
+	}
+
+
 	/*! \brief Calculate and apply relocation for external symbol
 	 * \param base Base address in target memory of the object to which this relocation belongs to
 	 * \param symbol (External) Symbol in another object
@@ -459,11 +473,27 @@ struct Relocator : private ELF_Def::Constants {
 	 * \param plt_entry PLT entry of the symbol
 	 * \param tls_module_id TLS module ID of (external) symbol
 	 * \param tls_offset TLS offset (from thread pointer / %fs) of (external) symbol
+	 * \return relocation value written to target
 	 */
 	template<typename Symbol>
 	inline uintptr_t fix_external(uintptr_t base, const Symbol & symbol, uintptr_t symbol_base, uintptr_t plt_entry = 0, uintptr_t tls_module_id = 0, intptr_t tls_offset = 0) const {
 		assert(symbol.section_index() != SHN_UNDEF);
-		return write_value(base, value_external(base, symbol, symbol_base, plt_entry, tls_module_id, tls_offset));
+		return fix_value_external(base, symbol, value_external(base, symbol, symbol_base, plt_entry, tls_module_id, tls_offset));
+	}
+
+
+	/*! \brief Apply relocation for external symbol with a precalculated value
+	 * \param base Base address in target memory of the object to which this relocation belongs to
+	 * \param value precalculated value to be written in the relocation target
+	 * \return relocation value written to target
+	 */
+	inline uintptr_t fix_value_internal(uintptr_t base, uintptr_t value) const {
+		if (is_copy()) {
+			memcpy(reinterpret_cast<void*>(address(base)), reinterpret_cast<void*>(value), entry.symbol().size());
+			return value;
+		} else {
+			return write_value(base, value);
+		}
 	}
 
 	/*! \brief Calculate and apply relocation (for internal symbol)
@@ -471,10 +501,10 @@ struct Relocator : private ELF_Def::Constants {
 	 * \param plt_entry PLT entry of the symbol
 	 * \param tls_module_id TLS module ID of (external) symbol
 	 * \param tls_offset TLS offset (from thread pointer / %fs) of (external) symbol
+	 * \return relocation value written to target
 	 */
 	inline uintptr_t fix_internal(uintptr_t base, uintptr_t plt_entry = 0, uintptr_t tls_module_id = 0, intptr_t tls_offset = 0) const {
-		assert(entry.symbol().section_index() == SHN_UNDEF);
-		return write_value(base, value_internal(base, plt_entry, tls_module_id, tls_offset));
+		return fix_value_internal(base, value_internal(base, plt_entry, tls_module_id, tls_offset));
 	}
 
  private:
@@ -500,7 +530,6 @@ struct Relocator : private ELF_Def::Constants {
 		T v = static_cast<T>(value);
 		T * m = reinterpret_cast<T *>(mem);
 		*m = v;
-		assert(static_cast<intptr_t>(v) == static_cast<intptr_t>(value));
 		return static_cast<uintptr_t>(v);
 	}
 
