@@ -32,6 +32,7 @@ class Dump {
 	using Note = typename ELF<C>::Note;
 	using Dynamic = typename ELF<C>::Dynamic;
 	using Symbol = typename ELF<C>::Symbol;
+	using RelocationRelativeList = typename ELF<C>::RelocationRelativeList;
 	using VersionDefinition = typename ELF<C>::VersionDefinition;
 	using VersionNeeded = typename ELF<C>::VersionNeeded;
 	const ELF<C> elf;
@@ -179,6 +180,8 @@ class Dump {
 				case ELF<C>::DT_SYMENT:
 				case ELF<C>::DT_SYMINSZ:
 				case ELF<C>::DT_SYMINENT:
+				case ELF<C>::DT_RELRSZ:
+				case ELF<C>::DT_RELRENT:
 					cout << DEC() << dyn.value() << " (bytes)";
 					break;
 
@@ -234,6 +237,13 @@ class Dump {
 			}
 			cout << DEC() << addend << endl;
 		}
+		cout << RESET() << endl;
+	}
+
+	void relocations(const RelocationRelativeList & relocations) const {
+		cout << "    " << relocations.offset_count() << " Offsets" << endl;
+		for (auto & rel : relocations)
+			cout << "  " << HEXPAD(16) << rel.offset() << endl;
 		cout << RESET() << endl;
 	}
 
@@ -474,6 +484,13 @@ class Dump {
 						{
 							auto rel = section.template get_array<typename ELF<C>::RelocationWithAddend>();
 							cout << "Relocation (with addend) section [" << elf.sections.index(section) << "] '" << section.name() << "' at offset " << HEX() << section.offset() << " contains " << DEC() << rel.count() << " entries:" << endl;
+							relocations(rel);
+						}
+						break;
+					case ELF<C>::SHT_RELR:
+						{
+							auto rel = section.template get_relative_relocations();
+							cout << "Relocation (relative) section [" << elf.sections.index(section) << "] '" << section.name() << "' at offset " << HEX() << section.offset() << " contains " << DEC() << rel.count() << " entries:" << endl;
 							relocations(rel);
 						}
 						break;

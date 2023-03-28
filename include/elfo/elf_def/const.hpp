@@ -237,7 +237,8 @@ struct Constants {
 		SHT_PREINIT_ARRAY  = 16,
 		SHT_GROUP          = 17,
 		SHT_SYMTAB_SHNDX   = 18,
-		SHT_NUM            = 19,
+		SHT_RELR           = 19,
+		SHT_NUM            = 20,
 		SHT_LOOS           = 0x60000000,
 		SHT_GNU_ATTRIBUTES = 0x6ffffff5,
 		SHT_GNU_HASH       = 0x6ffffff6,
@@ -465,7 +466,10 @@ struct Constants {
 		DT_PREINIT_ARRAY    = 32,  ///< Array with addresses of preinit functions
 		DT_PREINIT_ARRAYSZ  = 33,  ///< size in bytes of DT_PREINIT_ARRAY
 		DT_SYMTAB_SHNDX     = 34,  ///< Address of SYMTAB_SHNDX section
-		DT_NUM              = 35,  ///< Number used
+		DT_RELRSZ           = 35,  ///< Total size of Relr relocs
+		DT_RELR             = 36,  ///< Address of Relr relocs
+		DT_RELRENT          = 37,  ///< Size of one Relr reloc
+		DT_NUM              = 38,  ///< Numbers used
 		DT_LOOS             = 0x6000000D,  ///< Start of OS-specific
 		DT_HIOS             = 0x6ffff000,  ///< End of OS-specific
 		DT_VALRNGLO         = 0x6ffffd00,

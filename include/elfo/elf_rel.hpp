@@ -190,6 +190,7 @@ struct Relocator : private ELF_Def::Constants {
 						return B + A;
 
 					case R_X86_64_GOTPCREL:
+					case R_X86_64_GOTPCREL64:
 					case R_X86_64_GOTPCRELX:
 					case R_X86_64_REX_GOTPCRELX:
 						return G + GOT + A - P;
@@ -198,6 +199,7 @@ struct Relocator : private ELF_Def::Constants {
 						return S + A - GOT;
 
 					case R_X86_64_GOTPC32:
+					case R_X86_64_GOTPC64:
 						return GOT + A - P;
 
 					case R_X86_64_SIZE32:

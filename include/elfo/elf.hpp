@@ -25,6 +25,20 @@ class ELF : public ELF_Def::Structures<C> {
 	using Def = typename ELF_Def::Structures<C>;
 	using elfptr_t = typename Def::Elf_Addr;
 
+	/*! \brief Wrapper for Builtins
+	 * with overloaded parameter for different data types */
+	struct Builtin {
+		// Count trailing zeros
+		static int ctz(unsigned int value) { return __builtin_ctz(value); };
+		static int ctz(unsigned long value) { return __builtin_ctzl(value); };
+		static int ctz(unsigned long long value) { return __builtin_ctzll(value); };
+
+		// Population count (number of 1s)
+		static int popcount(unsigned int value) { return __builtin_popcount(value); };
+		static int popcount(unsigned long value) { return __builtin_popcountl(value); };
+		static int popcount(unsigned long long value) { return __builtin_popcountll(value); };
+	};
+
 	/*! \brief Start address of ELF in memory */
 	inline uintptr_t start() const {
 		return reinterpret_cast<uintptr_t>(&header);
@@ -80,7 +94,7 @@ class ELF : public ELF_Def::Structures<C> {
 			return _data != o._data;
 		}
 
-		/*! \brief Pointer to next element */
+		/*! \brief Pointer to i-th next element */
 		const DT * next(size_t i = 1) const {
 			return _data + i;
 		}
@@ -99,8 +113,7 @@ class ELF : public ELF_Def::Structures<C> {
 
 	 public:
 		/*! \brief Iterator constructor
-		 * \param p pointer to current element
-		 * \param a accessor template
+		 * \param accessor reference to accessor template
 		 */
 		Iterator(const A & accessor)
 		  : accessor{accessor} {}
@@ -108,7 +121,7 @@ class ELF : public ELF_Def::Structures<C> {
 		/*! \brief Next element
 		 * \note Element must provide a `next` method!
 		 */
-		Iterator operator++() {
+		Iterator & operator++() {
 			assert(accessor._data != accessor.next());
 			accessor._data = accessor.next();
 			return *this;
@@ -1037,6 +1050,199 @@ class ELF : public ELF_Def::Structures<C> {
 		}
 	};
 
+
+	/*! \brief Relative Relocation */
+	struct RelocationRelative : Accessor<typename Def::Relr> {
+		/*! \brief Construct relative relocation entry
+		 * \param elf ELF object to which this relocation belongs to
+		 * \param link Link index (ignored, for compatibility)
+		 * \param ptr Pointer to the memory containting the current relocation
+		 */
+		explicit RelocationRelative(const ELF<C> & elf, uint16_t link = 0, void * ptr = nullptr)
+		  : Accessor<typename Def::Relr>{elf, reinterpret_cast<typename Def::Relr *>(ptr)} {
+			  (void)link;
+		  }
+
+
+		/*! \brief Entry value (compressed) */
+		uintptr_t value() const {
+			return  this->_data == nullptr ? 0 : this->_data->r_value;
+		}
+
+		/*! \brief is this entry a delta bitmask */
+		uintptr_t is_bitmask() const {
+			return (value() & 1) != 0;
+		}
+
+		/*! \brief Number of offsets represented by this entry */
+		size_t offset_count() const {
+			return is_bitmask() ? Builtin::popcount(value()) - 1 : 1;
+		}
+	};
+
+
+	/*! \brief Sequential access (single linked-list style) to data with variable element size using accessor
+	 * \tparam A class
+	 */
+	class RelocationRelativeList : public Accessors<RelocationRelative> {
+	 public:
+		/*! \brief Iterator decompressing relative relocations */
+		struct Iterator {
+			/*! \brief Wrapper for decoded relative relocation entry */
+			struct Entry {
+				RelocationRelative entry;
+				uintptr_t base;
+				uint8_t bits;
+
+				Entry(const RelocationRelative & accessor)
+				 : entry(accessor), base(accessor.value()), bits(0) {
+					assert(!accessor.is_bitmask());
+				 }
+
+				/*! \Brief Resulting offset */
+				uintptr_t offset() const {
+					if (entry.is_bitmask()) {
+						return base + bits * sizeof(elfptr_t);
+					} else {
+						assert(base == entry.value());
+						return base;
+					}
+				}
+			} current;
+			const typename Def::Relr * const end;
+
+
+			/*! \brief Iterator constructor
+			 * \param p pointer to current element
+			 * \param a accessor template
+			 */
+			Iterator(const RelocationRelative & accessor, const typename Def::Relr * end)
+			  : current{accessor}, end(end) {}
+
+			/*! \brief Next element
+			 */
+			Iterator & operator++() {
+				while (current.entry._data != end) {
+					if (current.entry.is_bitmask()) {
+						// use next bit it bitmask
+						uintptr_t v = (current.entry.value() >> (++current.bits));
+						if (current.bits < sizeof(elfptr_t) * 8 && v != 0) {
+							// Skip all trailing zeros
+							current.bits += Builtin::ctz(v);
+							break;
+						}
+						// all entries in bitmask processed, move on
+						current.base += (8 * sizeof(elfptr_t) - 1) * sizeof(elfptr_t);
+					}
+					current.bits = 0;
+					current.entry._data++;
+					if (current.entry._data == end) {
+						current.base = 0;
+						break;
+					} else {
+						// switch to next entry
+						if (!current.entry.is_bitmask()) {
+							current.base = current.entry.value();
+							break;
+						}
+					}
+				}
+				return *this;
+			}
+
+			/*! \brief Compare current iterator element */
+			bool operator==(const Iterator & other) const {
+				return current.entry._data == other.current.entry._data && current.base == other.current.base && current.bits == other.current.bits;
+			}
+
+			/*! \brief Compare current iterator element */
+			bool operator!=(const Iterator & other) const {
+				return current.entry._data != other.current.entry._data || current.base != other.current.base || current.bits != other.current.bits;
+			}
+
+			/*! \brief Get current element */
+			const Entry operator*() const {
+				return current;
+			}
+
+			/*! \brief Get current offset value */
+			uintptr_t value() const {
+				return current.value();
+			}
+		};
+
+		/*! \brief Construct new list access for relative relocations
+		 * \param accessor \ref Accessor template
+		 * \param begin Pointer to first element
+		 * \param end Indicator for end of list
+		 */
+		RelocationRelativeList(const RelocationRelative & accessor, void * begin, void * end)
+		  : Accessors<RelocationRelative>{this->_accessor_value(accessor, begin), reinterpret_cast<typename Def::Relr *>(end)} {}
+
+		/*! \brief Construct new list access for relative relocations
+		 * \param accessor \ref Accessor template
+		 * \param begin Pointer to first element
+		 * \param end Indicator for end of list
+		 */
+		RelocationRelativeList(const RelocationRelative & accessor, void * begin, size_t size)
+		  : Accessors<RelocationRelative>{this->_accessor_value(accessor, begin), reinterpret_cast<typename Def::Relr *>(begin) + size} {}
+
+		/*! \brief Array-like access
+		 * \note O(n) complexity!
+		 * \param idx index
+		 * \return Accessor for element
+		 */
+		uintptr_t operator[](size_t idx) const {
+			return at(idx);
+		}
+
+		/*! \brief Array-like access
+		 * \note O(n) complexity!
+		 * \param idx index
+		 * \return Accessor for element
+		 */
+		typename Iterator::Entry at(size_t idx) const {
+			for (const auto & entry : *this)
+				if (idx-- == 0)
+					return entry;
+			assert(false);
+			return { this->_accessor };
+		}
+
+		/*! \brief Number of entries */
+		size_t count() const {
+			return (reinterpret_cast<size_t>(this->_end) - reinterpret_cast<size_t>(this->_accessor._data)) / this->_accessor.element_size();
+		}
+
+		/*! \brief Number of offsets in list
+		 * \note Slightly faster than item loop since it just iterates over the entries
+		 */
+		size_t offset_count() const {
+			size_t entries = 0;
+			for (const auto & entry : *reinterpret_cast<const Accessors<RelocationRelative>*>(this))
+				entries += entry.offset_count();
+			return entries;
+		}
+
+		/*! \brief Are there any elements in the array?
+		 * \return `false` if there is at least one element
+		 */
+		bool empty() const {
+			return this->begin() == this->end();
+		}
+
+		/*! \brief Get Iterator for first element */
+		Iterator begin() const {
+			return { this->_accessor, this->_end };
+		}
+
+		/*! \brief Get Iterator identicating end of list */
+		Iterator end() const {
+			return { this->_accessor_value(this->_accessor, this->_end), this->_end };
+		}
+	};
+
+
 	/*! \brief Dynamic table entry */
 	struct Dynamic : Accessor<typename Def::Dyn> {
 		/*! \brief Index of string table */
@@ -1727,7 +1933,7 @@ class ELF : public ELF_Def::Structures<C> {
 		Array<Relocation> get_relocations_plt() const {
 			uintptr_t strtab = 0;                         // Offset of string table
 			uintptr_t symtab = 0;                         // Offset of symbol table
-			void * jmprel = nullptr;                      // Pointer to thel PLT relocation table
+			void * jmprel = nullptr;                      // Pointer to the PLT relocation table
 			typename Def::dyn_tag pltrel = Def::DT_NULL;  // Type of PLT relocation table (REL or RELA)
 			size_t pltrelsz = 0;                          // Size of PLT relocation table
 
@@ -1767,6 +1973,38 @@ class ELF : public ELF_Def::Structures<C> {
 					assert(false);
 			}
 			return { Relocation{elf()}, nullptr, 0 };
+		}
+
+		/*! \brief Get relocations in dynamic section (excluding procedure linkage table) */
+		RelocationRelativeList get_relative_relocations() const {
+			void * relr = nullptr;                      // Pointer to the relative relocation table
+			size_t relrsz = 0;                          // Size of relocation table
+			size_t relrent = 0;                         // Size of relocation table entry
+
+			for (const auto &dyn: *this) {
+				switch (dyn.tag()) {
+					case Def::DT_RELR:
+						relr = data(dyn.value());
+						break;
+					case Def::DT_RELRSZ:
+						relrsz = dyn.value();
+						break;
+					case Def::DT_RELRENT:
+						relrent = dyn.value();
+						assert(relrent == sizeof(typename Def::Relr));
+						break;
+					default:
+						continue;
+				}
+			}
+
+			if (relr == nullptr) {
+				assert(relrsz == 0 && relrent == 0);
+				return { RelocationRelative{elf()}, nullptr, nullptr };
+			} else {
+				assert(relrent != 0);
+				return { RelocationRelative{elf()}, relr, relrsz / relrent };
+			}
 		}
 
 		// Function pointer type
@@ -2156,13 +2394,23 @@ class ELF : public ELF_Def::Structures<C> {
 			return DynamicTable{this->_elf, *this};
 		}
 
-		/*! \brief Get contents of relocation section */
+		/*! \brief Get contents of relocation (with/without addend) section */
 		Array<Relocation> get_relocations() const {
 			if (type() == Def::SHT_NULL) {
 				return { Relocation{this->_elf}, nullptr, 0 };
 			} else {
 				assert(type() == Def::SHT_REL || type() == Def::SHT_RELA);
 				return { Relocation{this->_elf, link(), type() == Def::SHT_RELA}, data(), entries() };
+			}
+		}
+
+		/*! \brief Get contents of relative relocation section */
+		RelocationRelativeList get_relative_relocations() const {
+			if (type() == Def::SHT_NULL) {
+				return { RelocationRelative{ this->_elf }, nullptr, nullptr };
+			} else {
+				assert(type() == Def::SHT_RELR);
+				return { RelocationRelative{ this->_elf, link() }, data(), entries() };
 			}
 		}
 

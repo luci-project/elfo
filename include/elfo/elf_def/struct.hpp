@@ -124,6 +124,10 @@ struct Structures : public Identification, public Constants, public Types<C> {
 		elfrel_t r_addend;
 	} __attribute__((packed));
 
+	struct Relr {
+		elfptr_t r_value;
+	} __attribute__((packed));
+
 
 	/*! \brief Dyanamic */
 	struct Dyn {
