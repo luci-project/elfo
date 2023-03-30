@@ -2070,7 +2070,7 @@ class ELF : public ELF_Def::Structures<C> {
 
 
 		/*! \brief Contents of the global offset table */
-		Array<Accessor<void*>> get_global_offset_table() const {
+		Array<Accessor<void*,void*>> get_global_offset_table() const {
 			void * got = nullptr;
 			size_t size = 0;
 			size_t entry_size = 0;
@@ -2101,7 +2101,7 @@ class ELF : public ELF_Def::Structures<C> {
 			}
 
 			assert(size == 0 || entry_size != 0);
-			return { Accessor<void*>{elf()}, got, size > 0 ? 3 + size / entry_size : 0 };
+			return { Accessor<void*,void*>{elf()}, got, size > 0 ? 3 + size / entry_size : 0 };
 		}
 
 		/*! \brief Pointer to the global offset table */
