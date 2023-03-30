@@ -47,7 +47,7 @@ class ELF : public ELF_Def::Structures<C> {
 	/*! \brief Accessor to wrap elements of a given data type
 	 * \tparam DT data type of element
 	 */
-	template <typename DT>
+	template <typename DT, typename DT_REF = DT &>
 	struct Accessor {
 		/*! \brief Parent object */
 		const ELF<C> & _elf;
@@ -70,12 +70,12 @@ class ELF : public ELF_Def::Structures<C> {
 		}
 
 		/*! \brief Get current element */
-		const DT data() const {
+		const DT_REF data() const {
 			return *_data;
 		}
 
 		/*! \brief Get current element */
-		const DT operator*() const {
+		const DT_REF operator*() const {
 			return *_data;
 		}
 
@@ -85,12 +85,12 @@ class ELF : public ELF_Def::Structures<C> {
 		}
 
 		/*! \brief Is this the identical payload? */
-		bool operator==(const Accessor<DT> & o) const {
+		bool operator==(const Accessor<DT,DT_REF> & o) const {
 			return _data == o._data;
 		}
 
 		/*! \brief Is this a different payload? */
-		bool operator!=(const Accessor<DT> & o) const {
+		bool operator!=(const Accessor<DT,DT_REF> & o) const {
 			return _data != o._data;
 		}
 
@@ -138,7 +138,7 @@ class ELF : public ELF_Def::Structures<C> {
 		}
 
 		/*! \brief Get current element */
-		const A operator*() const {
+		const A & operator*() const {
 			return accessor;
 		}
 	};
@@ -945,7 +945,7 @@ class ELF : public ELF_Def::Structures<C> {
 	};
 
 	/*! \brief Generic interface for relocations */
-	struct Relocation : Accessor<void> {
+	struct Relocation : Accessor<void,void> {
 		/*! \brief Corresponding symbol table offset */
 		const uintptr_t symtaboff;
 		/*! \brief String table offset (for symbol table) */
@@ -983,7 +983,7 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \param ptr Pointer to the memory containting the current relocation
 		 */
 		explicit Relocation(const ELF<C> & elf, uintptr_t symtaboff = 0, uintptr_t strtaboff = 0, bool withAddend = false, void * ptr = nullptr)
-		  : Accessor<void>{elf, ptr}, symtaboff{symtaboff}, strtaboff{strtaboff}, withAddend{withAddend} {}
+		  : Accessor<void,void>{elf, ptr}, symtaboff{symtaboff}, strtaboff{strtaboff}, withAddend{withAddend} {}
 
 		/*! \brief Valid relocation */
 		bool valid() const {
@@ -1161,13 +1161,13 @@ class ELF : public ELF_Def::Structures<C> {
 			}
 
 			/*! \brief Get current element */
-			const Entry operator*() const {
+			const Entry & operator*() const {
 				return current;
 			}
 
 			/*! \brief Get current offset value */
-			uintptr_t value() const {
-				return current.value();
+			uintptr_t offset() const {
+				return current.offset();
 			}
 		};
 
@@ -2012,7 +2012,7 @@ class ELF : public ELF_Def::Structures<C> {
 		typedef void (*func_fini_t)();
 
 		/*! \brief Pre-Init functions array */
-		Array<Accessor<func_init_t>> get_preinit_array(uintptr_t offset = 0) const {
+		Array<Accessor<func_init_t,func_init_t>> get_preinit_array(uintptr_t offset = 0) const {
 			return get_func<func_init_t>(Def::DT_PREINIT_ARRAY, Def::DT_PREINIT_ARRAYSZ, offset);
 		}
 
@@ -2025,7 +2025,7 @@ class ELF : public ELF_Def::Structures<C> {
 		}
 
 		/*! \brief Init functions array */
-		Array<Accessor<func_init_t>> get_init_array(uintptr_t offset = 0) const {
+		Array<Accessor<func_init_t,func_init_t>> get_init_array(uintptr_t offset = 0) const {
 			return get_func<func_init_t>(Def::DT_INIT_ARRAY, Def::DT_INIT_ARRAYSZ, offset);
 		}
 
@@ -2046,7 +2046,7 @@ class ELF : public ELF_Def::Structures<C> {
 		}
 
 		/*! \brief De-init functions array */
-		Array<Accessor<func_fini_t>> get_fini_array(uintptr_t offset = 0) const {
+		Array<Accessor<func_fini_t,func_fini_t>> get_fini_array(uintptr_t offset = 0) const {
 			return get_func<func_fini_t>(Def::DT_FINI_ARRAY, Def::DT_FINI_ARRAYSZ, offset);
 		}
 
@@ -2156,7 +2156,7 @@ class ELF : public ELF_Def::Structures<C> {
 
 		/*! \brief Helper to get function pointer array */
 		template<typename F>
-		Array<Accessor<F>> get_func(typename Def::dyn_tag tag_start, typename Def::dyn_tag tag_size, uintptr_t offset = 0) const {
+		Array<Accessor<F,F>> get_func(typename Def::dyn_tag tag_start, typename Def::dyn_tag tag_size, uintptr_t offset = 0) const {
 			void * start = nullptr;
 			size_t size = 0;
 			for (const auto & dyn : *this) {
@@ -2165,7 +2165,7 @@ class ELF : public ELF_Def::Structures<C> {
 				else if (dyn.tag() == tag_size)
 					size = dyn.value();
 			}
-			return { Accessor<F>{elf()}, start, size / sizeof(void*) };
+			return { Accessor<F,F>{elf()}, start, size / sizeof(void*) };
 		}
 
 		/*! \brief add offset to function pointer */

@@ -242,7 +242,7 @@ class Dump {
 
 	void relocations(const RelocationRelativeList & relocations) const {
 		cout << "    " << relocations.offset_count() << " Offsets" << endl;
-		for (auto & rel : relocations)
+		for (const auto & rel : relocations)
 			cout << "  " << HEXPAD(16) << rel.offset() << endl;
 		cout << RESET() << endl;
 	}
