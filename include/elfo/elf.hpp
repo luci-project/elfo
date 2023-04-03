@@ -2499,7 +2499,7 @@ class ELF : public ELF_Def::Structures<C> {
 	 * \param displacement offset in ELF
 	 * \return pointer to data
 	 */
-	inline void * data(uintptr_t displacement) const {
+	inline void * data(uintptr_t displacement = 0) const {
 		return reinterpret_cast<void *>(start() + displacement);
 	}
 
