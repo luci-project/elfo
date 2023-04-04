@@ -1301,13 +1301,12 @@ class ELF : public ELF_Def::Structures<C> {
 	struct Note : Accessor<typename Def::Nhdr> {
 		/*! \brief Construct note entry
 		 * \param elf ELF object to which this note belongs to
-		 * \param link Associated section index (must be `0`)
+		 * \param link Associated section index (unused)
 		 * \param ptr Pointer to the memory containting the current note
 		 */
 		Note(const ELF<C> & elf, uint16_t link, void * ptr = nullptr)
 		  : Accessor<typename Def::Nhdr>{elf, reinterpret_cast<typename Def::Nhdr *>(ptr)} {
 			(void) link;
-			assert(link == 0);
 		}
 
 		/*! \brief Construct note entry
