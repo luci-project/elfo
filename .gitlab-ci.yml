@@ -1,4 +1,4 @@
-build-test:
+gcc:
   image: inf4/stubs:gcc-x64
   before_script:
     - apt-get update && apt-get install -y python3 python3-pyparsing
@@ -8,10 +8,20 @@ build-test:
     paths:
       - "elfo-*"
 
-coding-style:
+clang:
   image: inf4/stubs:clang-x64
   before_script:
-    - apt-get update && apt-get install -y libc++-dev cpplint
+    - apt-get update && apt-get install -y python3 python3-pyparsing libc++-dev
+  script:
+    - make
+  artifacts:
+    paths:
+      - "elfo-*"
+
+style:
+  image: inf4/stubs:clang-x64
+  before_script:
+    - apt-get update && apt-get install -y python3 python3-pyparsing libc++-dev cpplint
   script:
     - make lint
     - make tidy

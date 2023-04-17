@@ -8,7 +8,7 @@ CPPLINT ?= cpplint
 TIDY ?= clang-tidy
 TIDYCONFIG ?= .clang-tidy
 
-CXXFLAGS ?= -Og -g -static-pie
+CXXFLAGS ?= -Og -g -fPIC -static-pie
 CXXFLAGS += -I include/
 CXXFLAGS += -Wall -Wextra -Wno-switch -Wno-unused-variable -Wno-comment
 
@@ -36,7 +36,7 @@ all: $(TARGETS) $(TESTS)
 
 test: $(TESTS)
 
-test-%: $(TESTFOLDER)/%.stdout $(BINPREFIX)% $(TESTTARGET)
+test-%: $(TESTFOLDER)/%.stdout $(BINPREFIX)%
 	@echo "Test		$*"
 	@./$(BINPREFIX)$* $(TESTTARGET) | diff -w $< -
 
@@ -51,7 +51,7 @@ $(BINPREFIX)%: $(SRCFOLDER)/%.cpp $(GENFILES) $(MAKEFILE_LIST)
 define include_str_template =
 $$(SRCFOLDER)/_str_$(notdir $(1)): include/elfo/$(1) tools/enum2str.py $$(MAKEFILE_LIST)
 	@echo "GEN		$$@"
-	$$(VERBOSE) $$(CXX) -fpreprocessed -dD -E $$< 2>/dev/null | tools/enum2str.py elfo/$(1) $(2) > $$@
+	$$(VERBOSE) $$(CXX) -dD -E $$< 2>/dev/null | tools/enum2str.py elfo/$(1) $(2) > $$@
 
 clean::
 	$$(VERBOSE) rm -f $$(SRCFOLDER)/_str_$(notdir $(1))
