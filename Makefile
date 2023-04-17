@@ -36,7 +36,7 @@ all: $(TARGETS) $(TESTS)
 
 test: $(TESTS)
 
-test-%: $(TESTFOLDER)/%.stdout $(BINPREFIX)% $(TESTTARGET)
+test-%: $(TESTFOLDER)/%.stdout $(BINPREFIX)%
 	@echo "Test		$*"
 	@./$(BINPREFIX)$* $(TESTTARGET) | diff -w $< -
 
