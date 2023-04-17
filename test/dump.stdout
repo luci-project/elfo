@@ -1,289 +1,295 @@
-File test/h2g2 (75160 Bytes)
+File test/h2g2 (77960 Bytes)
 
 ELF Header (valid)
   Magic:   7f 45 4c 46 02 01 01 00 00 00 00 00 00 00 00 00
-  File class:                        ELFCLASS64 
-  Data encoding:                     ELFDATA2LSB 
-  File Version:                      ELFVERSION_CURRENT 
-  OS/ABI:                            ELFOSABI_NONE 
+  File class:                        ELFCLASS64
+  Data encoding:                     ELFDATA2LSB
+  File Version:                      ELFVERSION_CURRENT
+  OS/ABI:                            ELFOSABI_NONE
   ABI Version:                       0
-  Type:                              ET_DYN 
-  Machine:                           EM_X86_64 
-  Version:                           EV_CURRENT 
-  Entry point address:               0x1120
+  Type:                              ET_DYN
+  Machine:                           EM_X86_64
+  Version:                           EV_CURRENT
+  Entry point address:               0x10d0
   Start of program headers:          64 (bytes into file)
-  Start of section headers:          72792 (bytes into file)
+  Start of section headers:          75528 (bytes into file)
   Flags:                             0
   Size of this header:               64 (bytes)
   Size of program headers:           56 (bytes)
-  Number of program headers:         13
+  Number of program headers:         12
   Size of section headers:           64 (bytes)
-  Number of section headers:         37
-  Section header string table index: 36
-  Size:                              75160 (bytes)
+  Number of section headers:         38
+  Section header string table index: 37
+  Size:                              77960 (bytes)
 
 Section Headers:
   [Nr] Name                Type             Address            Off      Size     EnSz Flg Lk Inf Al
   [ 0]                     SHT_NULL         0x0000000000000000 0x000000 0x000000 0x00      0   0  0
-  [ 1] .interp             SHT_PROGBITS     0x0000000000000318 0x000318 0x00001c 0x00   A  0   0  1
-  [ 2] .note.gnu.property  SHT_NOTE         0x0000000000000338 0x000338 0x000020 0x00   A  0   0  8
-  [ 3] .note.gnu.build-id  SHT_NOTE         0x0000000000000358 0x000358 0x000024 0x00   A  0   0  4
-  [ 4] .note.ABI-tag       SHT_NOTE         0x000000000000037c 0x00037c 0x000020 0x00   A  0   0  4
-  [ 5] .gnu.hash           SHT_GNU_HASH     0x00000000000003a0 0x0003a0 0x000028 0x00   A  6   0  8
-  [ 6] .dynsym             SHT_DYNSYM       0x00000000000003c8 0x0003c8 0x000180 0x18   A  7   1  8
-  [ 7] .dynstr             SHT_STRTAB       0x0000000000000548 0x000548 0x000225 0x00   A  0   0  1
-  [ 8] .gnu.version        SHT_GNU_VERSYM   0x000000000000076e 0x00076e 0x000020 0x02   A  6   0  2
-  [ 9] .gnu.version_r      SHT_GNU_VERNEED  0x0000000000000790 0x000790 0x000070 0x00   A  7   2  8
-  [10] .rela.dyn           SHT_RELA         0x0000000000000800 0x000800 0x000120 0x18   A  6   0  8
-  [11] .rela.plt           SHT_RELA         0x0000000000000920 0x000920 0x0000a8 0x18  AI  6  24  8
-  [12] .init               SHT_PROGBITS     0x0000000000001000 0x001000 0x00001b 0x00  AX  0   0  4
-  [13] .plt                SHT_PROGBITS     0x0000000000001020 0x001020 0x000080 0x10  AX  0   0 16
-  [14] .plt.got            SHT_PROGBITS     0x00000000000010a0 0x0010a0 0x000010 0x10  AX  0   0 16
-  [15] .plt.sec            SHT_PROGBITS     0x00000000000010b0 0x0010b0 0x000070 0x10  AX  0   0 16
-  [16] .text               SHT_PROGBITS     0x0000000000001120 0x001120 0x0002a5 0x00  AX  0   0 16
-  [17] .fini               SHT_PROGBITS     0x00000000000013c8 0x0013c8 0x00000d 0x00  AX  0   0  4
-  [18] .rodata             SHT_PROGBITS     0x0000000000002000 0x002000 0x000055 0x00   A  0   0  8
-  [19] .eh_frame_hdr       SHT_PROGBITS     0x0000000000002058 0x002058 0x00005c 0x00   A  0   0  4
-  [20] .eh_frame           SHT_PROGBITS     0x00000000000020b8 0x0020b8 0x000160 0x00   A  0   0  8
-  [21] .init_array         SHT_INIT_ARRAY   0x0000000000003d60 0x002d60 0x000010 0x08  WA  0   0  8
-  [22] .fini_array         SHT_FINI_ARRAY   0x0000000000003d70 0x002d70 0x000008 0x08  WA  0   0  8
-  [23] .dynamic            SHT_DYNAMIC      0x0000000000003d78 0x002d78 0x000200 0x10  WA  7   0  8
-  [24] .got                SHT_PROGBITS     0x0000000000003f78 0x002f78 0x000088 0x08  WA  0   0  8
-  [25] .data               SHT_PROGBITS     0x0000000000004000 0x003000 0x000010 0x00  WA  0   0  8
-  [26] .bss                SHT_NOBITS       0x0000000000004040 0x003010 0x000148 0x00  WA  0   0 64
-  [27] .comment            SHT_PROGBITS     0x0000000000000000 0x003010 0x00002a 0x01  MS  0   0  1
-  [28] .debug_aranges      SHT_PROGBITS     0x0000000000000000 0x00303a 0x000030 0x00      0   0  1
-  [29] .debug_info         SHT_PROGBITS     0x0000000000000000 0x00306a 0x0061f5 0x00      0   0  1
-  [30] .debug_abbrev       SHT_PROGBITS     0x0000000000000000 0x00925f 0x000991 0x00      0   0  1
-  [31] .debug_line         SHT_PROGBITS     0x0000000000000000 0x009bf0 0x00060a 0x00      0   0  1
-  [32] .debug_str          SHT_PROGBITS     0x0000000000000000 0x00a1fa 0x006a06 0x01  MS  0   0  1
-  [33] .debug_loc          SHT_PROGBITS     0x0000000000000000 0x010c00 0x0002ae 0x00      0   0  1
-  [34] .symtab             SHT_SYMTAB       0x0000000000000000 0x010eb0 0x0007f8 0x18     35  55  8
-  [35] .strtab             SHT_STRTAB       0x0000000000000000 0x0116a8 0x000448 0x00      0   0  1
-  [36] .shstrtab           SHT_STRTAB       0x0000000000000000 0x011af0 0x000165 0x00      0   0  1
+  [ 1] .interp             SHT_PROGBITS     0x00000000000002e0 0x0002e0 0x00001c 0x00   A  0   0  1
+  [ 2] .note.ABI-tag       SHT_NOTE         0x00000000000002fc 0x0002fc 0x000020 0x00   A  0   0  4
+  [ 3] .note.gnu.build-id  SHT_NOTE         0x000000000000031c 0x00031c 0x000024 0x00   A  0   0  4
+  [ 4] .gnu.hash           SHT_GNU_HASH     0x0000000000000340 0x000340 0x000028 0x00   A  5   0  8
+  [ 5] .dynsym             SHT_DYNSYM       0x0000000000000368 0x000368 0x0001b0 0x18   A  6   1  8
+  [ 6] .dynstr             SHT_STRTAB       0x0000000000000518 0x000518 0x000267 0x00   A  0   0  1
+  [ 7] .gnu.version        SHT_GNU_VERSYM   0x0000000000000780 0x000780 0x000024 0x02   A  5   0  2
+  [ 8] .gnu.version_r      SHT_GNU_VERNEED  0x00000000000007a8 0x0007a8 0x000090 0x00   A  6   3  8
+  [ 9] .rela.dyn           SHT_RELA         0x0000000000000838 0x000838 0x000120 0x18   A  5   0  8
+  [10] .rela.plt           SHT_RELA         0x0000000000000958 0x000958 0x0000d8 0x18  AI  5  25  8
+  [11] .init               SHT_PROGBITS     0x0000000000001000 0x001000 0x000017 0x00  AX  0   0  4
+  [12] .plt                SHT_PROGBITS     0x0000000000001020 0x001020 0x0000a0 0x10  AX  0   0 16
+  [13] .plt.got            SHT_PROGBITS     0x00000000000010c0 0x0010c0 0x000008 0x08  AX  0   0  8
+  [14] .text               SHT_PROGBITS     0x00000000000010d0 0x0010d0 0x000261 0x00  AX  0   0 16
+  [15] .fini               SHT_PROGBITS     0x0000000000001334 0x001334 0x000009 0x00  AX  0   0  4
+  [16] .rodata             SHT_PROGBITS     0x0000000000002000 0x002000 0x000060 0x00   A  0   0  8
+  [17] .eh_frame_hdr       SHT_PROGBITS     0x0000000000002060 0x002060 0x000054 0x00   A  0   0  4
+  [18] .eh_frame           SHT_PROGBITS     0x00000000000020b8 0x0020b8 0x000178 0x00   A  0   0  8
+  [19] .gcc_except_table   SHT_PROGBITS     0x0000000000002230 0x002230 0x000012 0x00   A  0   0  1
+  [20] .tdata              SHT_PROGBITS     0x0000000000003da4 0x002da4 0x000004 0x00 WAT  0   0  4
+  [21] .init_array         SHT_INIT_ARRAY   0x0000000000003da8 0x002da8 0x000010 0x08  WA  0   0  8
+  [22] .fini_array         SHT_FINI_ARRAY   0x0000000000003db8 0x002db8 0x000008 0x08  WA  0   0  8
+  [23] .dynamic            SHT_DYNAMIC      0x0000000000003dc0 0x002dc0 0x000210 0x10  WA  6   0  8
+  [24] .got                SHT_PROGBITS     0x0000000000003fd0 0x002fd0 0x000030 0x08  WA  0   0  8
+  [25] .got.plt            SHT_PROGBITS     0x0000000000004000 0x003000 0x000060 0x08  WA  0   0  8
+  [26] .data               SHT_PROGBITS     0x0000000000004060 0x003060 0x000018 0x00  WA  0   0  8
+  [27] .bss                SHT_NOBITS       0x0000000000004080 0x003078 0x000118 0x00  WA  0   0 32
+  [28] .comment            SHT_PROGBITS     0x0000000000000000 0x003078 0x00001c 0x01  MS  0   0  1
+  [29] .debug_aranges      SHT_PROGBITS     0x0000000000000000 0x003094 0x000030 0x00      0   0  1
+  [30] .debug_info         SHT_PROGBITS     0x0000000000000000 0x0030c4 0x006767 0x00      0   0  1
+  [31] .debug_abbrev       SHT_PROGBITS     0x0000000000000000 0x00982b 0x000954 0x00      0   0  1
+  [32] .debug_line         SHT_PROGBITS     0x0000000000000000 0x00a17f 0x0006a1 0x00      0   0  1
+  [33] .debug_str          SHT_PROGBITS     0x0000000000000000 0x00a820 0x006925 0x01  MS  0   0  1
+  [34] .debug_loc          SHT_PROGBITS     0x0000000000000000 0x011145 0x000766 0x00      0   0  1
+  [35] .symtab             SHT_SYMTAB       0x0000000000000000 0x0118b0 0x000858 0x18     36  56  8
+  [36] .strtab             SHT_STRTAB       0x0000000000000000 0x012108 0x000493 0x00      0   0  1
+  [37] .shstrtab           SHT_STRTAB       0x0000000000000000 0x01259b 0x00016b 0x00      0   0  1
  Key to Flags:
   W (write), A (alloc), X (execute), M (merge), S (strings), I (info), L (link order),
   O (extra OS processing required), G (group), T (TLS), C (compressed)
 
 Program Headers:
   Nr Type              Offset   VirtAddr           PhysAddr           FileSiz  MemSiz   Flg Align
-   0 PT_PHDR           0x000040 0x0000000000000040 0x0000000000000040 0x0002d8 0x0002d8 R   0x8
-   1 PT_INTERP         0x000318 0x0000000000000318 0x0000000000000318 0x00001c 0x00001c R   0x1
+   0 PT_PHDR           0x000040 0x0000000000000040 0x0000000000000040 0x0002a0 0x0002a0 R   0x8
+   1 PT_INTERP         0x0002e0 0x00000000000002e0 0x00000000000002e0 0x00001c 0x00001c R   0x1
          [Requesting program interpreter: /lib64/ld-linux-x86-64.so.2]
-   2 PT_LOAD           0x000000 0x0000000000000000 0x0000000000000000 0x0009c8 0x0009c8 R   0x1000
-   3 PT_LOAD           0x001000 0x0000000000001000 0x0000000000001000 0x0003d5 0x0003d5 R E 0x1000
-   4 PT_LOAD           0x002000 0x0000000000002000 0x0000000000002000 0x000218 0x000218 R   0x1000
-   5 PT_LOAD           0x002d60 0x0000000000003d60 0x0000000000003d60 0x0002b0 0x000428 RW  0x1000
-   6 PT_DYNAMIC        0x002d78 0x0000000000003d78 0x0000000000003d78 0x000200 0x000200 RW  0x8
-   7 PT_NOTE           0x000338 0x0000000000000338 0x0000000000000338 0x000020 0x000020 R   0x8
-   8 PT_NOTE           0x000358 0x0000000000000358 0x0000000000000358 0x000044 0x000044 R   0x4
-   9 PT_GNU_PROPERTY   0x000338 0x0000000000000338 0x0000000000000338 0x000020 0x000020 R   0x8
-  10 PT_GNU_EH_FRAME   0x002058 0x0000000000002058 0x0000000000002058 0x00005c 0x00005c R   0x4
-  11 PT_GNU_STACK      0x000000 0x0000000000000000 0x0000000000000000 0x000000 0x000000 RW  0x10
-  12 PT_GNU_RELRO      0x002d60 0x0000000000003d60 0x0000000000003d60 0x0002a0 0x0002a0 R   0x1
+   2 PT_LOAD           0x000000 0x0000000000000000 0x0000000000000000 0x000a30 0x000a30 R   0x1000
+   3 PT_LOAD           0x001000 0x0000000000001000 0x0000000000001000 0x00033d 0x00033d R E 0x1000
+   4 PT_LOAD           0x002000 0x0000000000002000 0x0000000000002000 0x000242 0x000242 R   0x1000
+   5 PT_LOAD           0x002da4 0x0000000000003da4 0x0000000000003da4 0x0002d4 0x0003f4 RW  0x1000
+   6 PT_DYNAMIC        0x002dc0 0x0000000000003dc0 0x0000000000003dc0 0x000210 0x000210 RW  0x8
+   7 PT_NOTE           0x0002fc 0x00000000000002fc 0x00000000000002fc 0x000044 0x000044 R   0x4
+   8 PT_TLS            0x002da4 0x0000000000003da4 0x0000000000003da4 0x000004 0x000004 R   0x4
+   9 PT_GNU_EH_FRAME   0x002060 0x0000000000002060 0x0000000000002060 0x000054 0x000054 R   0x4
+  10 PT_GNU_STACK      0x000000 0x0000000000000000 0x0000000000000000 0x000000 0x000000 RW  0x10
+  11 PT_GNU_RELRO      0x002da4 0x0000000000003da4 0x0000000000003da4 0x00025c 0x00025c R   0x1
 
  Section to Segment Nr mapping:
   Nr Sections
    0
    1 .interp
-   2 .interp .note.gnu.property .note.gnu.build-id .note.ABI-tag .gnu.hash .dynsym .dynstr .gnu.version .gnu.version_r .rela.dyn .rela.plt
-   3 .init .plt .plt.got .plt.sec .text .fini
-   4 .rodata .eh_frame_hdr .eh_frame
-   5 .init_array .fini_array .dynamic .got .data
+   2 .interp .note.ABI-tag .note.gnu.build-id .gnu.hash .dynsym .dynstr .gnu.version .gnu.version_r .rela.dyn .rela.plt
+   3 .init .plt .plt.got .text .fini
+   4 .rodata .eh_frame_hdr .eh_frame .gcc_except_table
+   5 .tdata .init_array .fini_array .dynamic .got .got.plt .data
    6 .dynamic
-   7 .note.gnu.property
-   8 .note.gnu.build-id .note.ABI-tag
-   9 .note.gnu.property
-  10 .eh_frame_hdr
-  11
-  12 .init_array .fini_array .dynamic .got
+   7 .note.ABI-tag .note.gnu.build-id
+   8 .tdata
+   9 .eh_frame_hdr
+  10
+  11 .tdata .init_array .fini_array .dynamic .got
 
-Notes section [2] '.note.gnu.property' at offset 0x338 contains 1 entries:
-  Owner                Data size  Description
-  GNU                  0x00000010 NT_GNU_PROPERTY_TYPE_0: 0xc0000002 0x00000004 0x00000003 0x00000000
-
-Notes section [3] '.note.gnu.build-id' at offset 0x358 contains 1 entries:
-  Owner                Data size  Description
-  GNU                  0x00000014 NT_GNU_BUILD_ID: 6000bc75cd95450881b807bebe7bab158143737f
-
-Notes section [4] '.note.ABI-tag' at offset 0x37c contains 1 entries:
+Notes section [2] '.note.ABI-tag' at offset 0x2fc contains 1 entries:
   Owner                Data size  Description
   GNU                  0x00000010 NT_GNU_ABI_TAG: Linux 3.2.0
 
-Dynamic Symbol table [6] '.dynsym' at offset 0x3c8 contains 16 entries:
+Notes section [3] '.note.gnu.build-id' at offset 0x31c contains 1 entries:
+  Owner                Data size  Description
+  GNU                  0x00000014 NT_GNU_BUILD_ID: fe68a3a9fcb6b434b0fcf183e77a191c876b53e6
+
+Dynamic Symbol table [5] '.dynsym' at offset 0x368 contains 18 entries:
    Num Value              Size  Type           Bind         Vis          Ndx Name
      0 0x0000000000000000     0 STT_NOTYPE     STB_LOCAL    STV_DEFAULT  UND 
      1 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND _ZSt4endlIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_
-     2 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEED1Ev
-     3 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND __cxa_atexit
-     4 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND __stack_chk_fail
-     5 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND _ZSt16__ostream_insertIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_PKS3_l
-     6 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC1EPKcRKS3_
-     7 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND _ZNSt8ios_base4InitC1Ev
+     2 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND __cxa_atexit
+     3 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND _ZdlPv
+     4 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND _ZSt16__ostream_insertIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_PKS3_l
+     5 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC1EPKcRKS3_
+     6 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND _ZNSt8ios_base4InitC1Ev
+     7 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND __gxx_personality_v0
      8 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND _ZNSolsEi
      9 0x0000000000000000     0 STT_NOTYPE     STB_WEAK     STV_DEFAULT  UND _ITM_deregisterTMCloneTable
-    10 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND __libc_start_main
-    11 0x0000000000000000     0 STT_NOTYPE     STB_WEAK     STV_DEFAULT  UND __gmon_start__
-    12 0x0000000000000000     0 STT_NOTYPE     STB_WEAK     STV_DEFAULT  UND _ITM_registerTMCloneTable
-    13 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND _ZNSt8ios_base4InitD1Ev
-    14 0x0000000000000000     0 STT_FUNC       STB_WEAK     STV_DEFAULT  UND __cxa_finalize
-    15 0x0000000000004040   272 STT_OBJECT     STB_GLOBAL   STV_DEFAULT   26 _ZSt4cout
+    10 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND _Unwind_Resume
+    11 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND __libc_start_main
+    12 0x0000000000000000     0 STT_NOTYPE     STB_WEAK     STV_DEFAULT  UND __gmon_start__
+    13 0x0000000000000000     0 STT_NOTYPE     STB_WEAK     STV_DEFAULT  UND _ITM_registerTMCloneTable
+    14 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE6appendEPKc
+    15 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND _ZNSt8ios_base4InitD1Ev
+    16 0x0000000000000000     0 STT_FUNC       STB_WEAK     STV_DEFAULT  UND __cxa_finalize
+    17 0x0000000000004080   272 STT_OBJECT     STB_GLOBAL   STV_DEFAULT   27 _ZSt4cout
 
-Version symbol [8] '.gnu.version' at offset 0x76e contains 16 entries:
+Version symbol [7] '.gnu.version' at offset 0x780 contains 18 entries:
    Num: Index
-     0: 0       1: 3       2: 4       3: 2       4: 5       5: 6       6: 4       7: 3       8: 3       9: 0  
-    10: 2      11: 0      12: 0      13: 3      14: 2      15: 3  
+     0: 0       1: 3       2: 2       3: 3       4: 4       5: 5       6: 3       7: 6       8: 3       9: 0  
+    10: 7      11: 2      12: 0      13: 0      14: 5      15: 3      16: 2      17: 3  
 
-Version dependency [9] '.gnu.version_r' at offset 0x790 contains 2 entries:
-  0x0000 Version: VER_NEED_CURRENT   File: libstdc++.so.6  Auxiliary count: 3
-  0x0010   Name: GLIBCXX_3.4.9 (0x02297f89)  Flags: none (0x0000)  Index: 6
-  0x0020   Name: GLIBCXX_3.4.21 (0x0297f871)  Flags: none (0x0000)  Index: 4
-  0x0030   Name: GLIBCXX_3.4 (0x08922974)  Flags: none (0x0000)  Index: 3
-  0x0040 Version: VER_NEED_CURRENT   File: libc.so.6  Auxiliary count: 2
-  0x0050   Name: GLIBC_2.4 (0x0d696914)  Flags: none (0x0000)  Index: 5
-  0x0060   Name: GLIBC_2.2.5 (0x09691a75)  Flags: none (0x0000)  Index: 2
+Version dependency [8] '.gnu.version_r' at offset 0x7a8 contains 3 entries:
+  0x0000 Version: VER_NEED_CURRENT  File: libgcc_s.so.1  Auxiliary count: 1
+  0x0010   Name: GCC_3.0 (0x0b792650)  Flags: none (0x0000)  Index: 7
+  0x0020 Version: VER_NEED_CURRENT  File: libstdc++.so.6  Auxiliary count: 4
+  0x0030   Name: CXXABI_1.3 (0x056bafd3)  Flags: none (0x0000)  Index: 6
+  0x0040   Name: GLIBCXX_3.4.21 (0x0297f871)  Flags: none (0x0000)  Index: 5
+  0x0050   Name: GLIBCXX_3.4.9 (0x02297f89)  Flags: none (0x0000)  Index: 4
+  0x0060   Name: GLIBCXX_3.4 (0x08922974)  Flags: none (0x0000)  Index: 3
+  0x0070 Version: VER_NEED_CURRENT  File: libc.so.6  Auxiliary count: 1
+  0x0080   Name: GLIBC_2.2.5 (0x09691a75)  Flags: none (0x0000)  Index: 2
 
-Relocation (with addend) section [10] '.rela.dyn' at offset 0x800 contains 12 entries:
+Relocation (with addend) section [9] '.rela.dyn' at offset 0x838 contains 12 entries:
   Offset             Info               Type                Symbol's Value     Target (Symbol's Name + Addend)
-  0x0000000000003d60 0x0000000000000008 R_X86_64_RELATIVE                      4608
-  0x0000000000003d68 0x0000000000000008 R_X86_64_RELATIVE                      4907
-  0x0000000000003d70 0x0000000000000008 R_X86_64_RELATIVE                      4544
-  0x0000000000004008 0x0000000000000008 R_X86_64_RELATIVE                      16392
-  0x0000000000003fc8 0x0000000e00000006 R_X86_64_GLOB_DAT   0x0000000000000000 __cxa_finalize + 0
-  0x0000000000003fd0 0x0000000200000006 R_X86_64_GLOB_DAT   0x0000000000000000 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEED1Ev + 0
+  0x0000000000003da8 0x0000000000000008 R_X86_64_RELATIVE                      4528
+  0x0000000000003db0 0x0000000000000008 R_X86_64_RELATIVE                      4781
+  0x0000000000003db8 0x0000000000000008 R_X86_64_RELATIVE                      4464
+  0x0000000000004068 0x0000000000000008 R_X86_64_RELATIVE                      16488
+  0x0000000000003fd0 0x0000001000000006 R_X86_64_GLOB_DAT   0x0000000000000000 __cxa_finalize + 0
   0x0000000000003fd8 0x0000000900000006 R_X86_64_GLOB_DAT   0x0000000000000000 _ITM_deregisterTMCloneTable + 0
-  0x0000000000003fe0 0x0000000a00000006 R_X86_64_GLOB_DAT   0x0000000000000000 __libc_start_main + 0
-  0x0000000000003fe8 0x0000000b00000006 R_X86_64_GLOB_DAT   0x0000000000000000 __gmon_start__ + 0
-  0x0000000000003ff0 0x0000000c00000006 R_X86_64_GLOB_DAT   0x0000000000000000 _ITM_registerTMCloneTable + 0
-  0x0000000000003ff8 0x0000000d00000006 R_X86_64_GLOB_DAT   0x0000000000000000 _ZNSt8ios_base4InitD1Ev + 0
-  0x0000000000004040 0x0000000f00000005 R_X86_64_COPY       0x0000000000004040 _ZSt4cout + 0
+  0x0000000000003fe0 0x0000000b00000006 R_X86_64_GLOB_DAT   0x0000000000000000 __libc_start_main + 0
+  0x0000000000003fe8 0x0000000c00000006 R_X86_64_GLOB_DAT   0x0000000000000000 __gmon_start__ + 0
+  0x0000000000003ff0 0x0000000d00000006 R_X86_64_GLOB_DAT   0x0000000000000000 _ITM_registerTMCloneTable + 0
+  0x0000000000003ff8 0x0000000f00000006 R_X86_64_GLOB_DAT   0x0000000000000000 _ZNSt8ios_base4InitD1Ev + 0
+  0x0000000000004070 0x0000000700000001 R_X86_64_64         0x0000000000000000 __gxx_personality_v0 + 0
+  0x0000000000004080 0x0000001100000005 R_X86_64_COPY       0x0000000000004080 _ZSt4cout + 0
 
-Relocation (with addend) section [11] '.rela.plt' at offset 0x920 contains 7 entries:
+Relocation (with addend) section [10] '.rela.plt' at offset 0x958 contains 9 entries:
   Offset             Info               Type                Symbol's Value     Target (Symbol's Name + Addend)
-  0x0000000000003f90 0x0000000100000007 R_X86_64_JUMP_SLOT  0x0000000000000000 _ZSt4endlIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_ + 0
-  0x0000000000003f98 0x0000000300000007 R_X86_64_JUMP_SLOT  0x0000000000000000 __cxa_atexit + 0
-  0x0000000000003fa0 0x0000000400000007 R_X86_64_JUMP_SLOT  0x0000000000000000 __stack_chk_fail + 0
-  0x0000000000003fa8 0x0000000500000007 R_X86_64_JUMP_SLOT  0x0000000000000000 _ZSt16__ostream_insertIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_PKS3_l + 0
-  0x0000000000003fb0 0x0000000600000007 R_X86_64_JUMP_SLOT  0x0000000000000000 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC1EPKcRKS3_ + 0
-  0x0000000000003fb8 0x0000000700000007 R_X86_64_JUMP_SLOT  0x0000000000000000 _ZNSt8ios_base4InitC1Ev + 0
-  0x0000000000003fc0 0x0000000800000007 R_X86_64_JUMP_SLOT  0x0000000000000000 _ZNSolsEi + 0
+  0x0000000000004018 0x0000000100000007 R_X86_64_JUMP_SLOT  0x0000000000000000 _ZSt4endlIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_ + 0
+  0x0000000000004020 0x0000000200000007 R_X86_64_JUMP_SLOT  0x0000000000000000 __cxa_atexit + 0
+  0x0000000000004028 0x0000000300000007 R_X86_64_JUMP_SLOT  0x0000000000000000 _ZdlPv + 0
+  0x0000000000004030 0x0000000400000007 R_X86_64_JUMP_SLOT  0x0000000000000000 _ZSt16__ostream_insertIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_PKS3_l + 0
+  0x0000000000004038 0x0000000500000007 R_X86_64_JUMP_SLOT  0x0000000000000000 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC1EPKcRKS3_ + 0
+  0x0000000000004040 0x0000000600000007 R_X86_64_JUMP_SLOT  0x0000000000000000 _ZNSt8ios_base4InitC1Ev + 0
+  0x0000000000004048 0x0000000800000007 R_X86_64_JUMP_SLOT  0x0000000000000000 _ZNSolsEi + 0
+  0x0000000000004050 0x0000000a00000007 R_X86_64_JUMP_SLOT  0x0000000000000000 _Unwind_Resume + 0
+  0x0000000000004058 0x0000000e00000007 R_X86_64_JUMP_SLOT  0x0000000000000000 _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE6appendEPKc + 0
 
-Dynamic section [23] '.dynamic' at offset 0x2d78 contains 28 entries:
+Dynamic section [23] '.dynamic' at offset 0x2dc0 contains 29 entries:
   Tag                Type                 Name/Value
   0x0000000000000001 DT_NEEDED            Shared library: [libstdc++.so.6]
+  0x0000000000000001 DT_NEEDED            Shared library: [libm.so.6]
+  0x0000000000000001 DT_NEEDED            Shared library: [libgcc_s.so.1]
   0x0000000000000001 DT_NEEDED            Shared library: [libc.so.6]
   0x000000000000000c DT_INIT              0x1000
-  0x000000000000000d DT_FINI              0x13c8
-  0x0000000000000019 DT_INIT_ARRAY        0x3d60
+  0x000000000000000d DT_FINI              0x1334
+  0x0000000000000019 DT_INIT_ARRAY        0x3da8
   0x000000000000001b DT_INIT_ARRAYSZ      16 (bytes)
-  0x000000000000001a DT_FINI_ARRAY        0x3d70
+  0x000000000000001a DT_FINI_ARRAY        0x3db8
   0x000000000000001c DT_FINI_ARRAYSZ      8 (bytes)
-  0x000000006ffffef5 DT_GNU_HASH          0x3a0
-  0x0000000000000005 DT_STRTAB            0x548
-  0x0000000000000006 DT_SYMTAB            0x3c8
-  0x000000000000000a DT_STRSZ             549 (bytes)
+  0x000000006ffffef5 DT_GNU_HASH          0x340
+  0x0000000000000005 DT_STRTAB            0x518
+  0x0000000000000006 DT_SYMTAB            0x368
+  0x000000000000000a DT_STRSZ             615 (bytes)
   0x000000000000000b DT_SYMENT            24 (bytes)
   0x0000000000000015 DT_DEBUG             0x0
-  0x0000000000000003 DT_PLTGOT            0x3f78
-  0x0000000000000002 DT_PLTRELSZ          168 (bytes)
-  0x0000000000000014 DT_PLTREL            DT_RELA 
-  0x0000000000000017 DT_JMPREL            0x920
-  0x0000000000000007 DT_RELA              0x800
+  0x0000000000000003 DT_PLTGOT            0x4000
+  0x0000000000000002 DT_PLTRELSZ          216 (bytes)
+  0x0000000000000014 DT_PLTREL            DT_RELA
+  0x0000000000000017 DT_JMPREL            0x958
+  0x0000000000000007 DT_RELA              0x838
   0x0000000000000008 DT_RELASZ            288 (bytes)
   0x0000000000000009 DT_RELAENT           24 (bytes)
-  0x000000000000001e DT_FLAGS             0x00000008 DF_BIND_NOW 
-  0x000000006ffffffb DT_FLAGS_1           0x08000001 DF_1_NOW  DF_1_PIE 
-  0x000000006ffffffe DT_VERNEED           0x790
-  0x000000006fffffff DT_VERNEEDNUM        2
-  0x000000006ffffff0 DT_VERSYM            0x76e
+  0x000000006ffffffb DT_FLAGS_1           0x08000000 DF_1_PIE
+  0x000000006ffffffe DT_VERNEED           0x7a8
+  0x000000006fffffff DT_VERNEEDNUM        3
+  0x000000006ffffff0 DT_VERSYM            0x780
   0x000000006ffffff9 DT_RELACOUNT         4
   0x0000000000000000 DT_NULL              0x0
 
-Symbol table [34] '.symtab' at offset 0x10eb0 contains 85 entries:
+Symbol table [35] '.symtab' at offset 0x118b0 contains 89 entries:
    Num Value              Size  Type           Bind         Vis          Ndx Name
      0 0x0000000000000000     0 STT_NOTYPE     STB_LOCAL    STV_DEFAULT  UND 
-     1 0x0000000000000318     0 STT_SECTION    STB_LOCAL    STV_DEFAULT    1 
-     2 0x0000000000000338     0 STT_SECTION    STB_LOCAL    STV_DEFAULT    2 
-     3 0x0000000000000358     0 STT_SECTION    STB_LOCAL    STV_DEFAULT    3 
-     4 0x000000000000037c     0 STT_SECTION    STB_LOCAL    STV_DEFAULT    4 
-     5 0x00000000000003a0     0 STT_SECTION    STB_LOCAL    STV_DEFAULT    5 
-     6 0x00000000000003c8     0 STT_SECTION    STB_LOCAL    STV_DEFAULT    6 
-     7 0x0000000000000548     0 STT_SECTION    STB_LOCAL    STV_DEFAULT    7 
-     8 0x000000000000076e     0 STT_SECTION    STB_LOCAL    STV_DEFAULT    8 
-     9 0x0000000000000790     0 STT_SECTION    STB_LOCAL    STV_DEFAULT    9 
-    10 0x0000000000000800     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   10 
-    11 0x0000000000000920     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   11 
-    12 0x0000000000001000     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   12 
-    13 0x0000000000001020     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   13 
-    14 0x00000000000010a0     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   14 
-    15 0x00000000000010b0     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   15 
-    16 0x0000000000001120     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   16 
-    17 0x00000000000013c8     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   17 
-    18 0x0000000000002000     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   18 
-    19 0x0000000000002058     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   19 
-    20 0x00000000000020b8     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   20 
-    21 0x0000000000003d60     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   21 
-    22 0x0000000000003d70     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   22 
-    23 0x0000000000003d78     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   23 
-    24 0x0000000000003f78     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   24 
+     1 0x00000000000002e0     0 STT_SECTION    STB_LOCAL    STV_DEFAULT    1 
+     2 0x00000000000002fc     0 STT_SECTION    STB_LOCAL    STV_DEFAULT    2 
+     3 0x000000000000031c     0 STT_SECTION    STB_LOCAL    STV_DEFAULT    3 
+     4 0x0000000000000340     0 STT_SECTION    STB_LOCAL    STV_DEFAULT    4 
+     5 0x0000000000000368     0 STT_SECTION    STB_LOCAL    STV_DEFAULT    5 
+     6 0x0000000000000518     0 STT_SECTION    STB_LOCAL    STV_DEFAULT    6 
+     7 0x0000000000000780     0 STT_SECTION    STB_LOCAL    STV_DEFAULT    7 
+     8 0x00000000000007a8     0 STT_SECTION    STB_LOCAL    STV_DEFAULT    8 
+     9 0x0000000000000838     0 STT_SECTION    STB_LOCAL    STV_DEFAULT    9 
+    10 0x0000000000000958     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   10 
+    11 0x0000000000001000     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   11 
+    12 0x0000000000001020     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   12 
+    13 0x00000000000010c0     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   13 
+    14 0x00000000000010d0     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   14 
+    15 0x0000000000001334     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   15 
+    16 0x0000000000002000     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   16 
+    17 0x0000000000002060     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   17 
+    18 0x00000000000020b8     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   18 
+    19 0x0000000000002230     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   19 
+    20 0x0000000000003da4     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   20 
+    21 0x0000000000003da8     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   21 
+    22 0x0000000000003db8     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   22 
+    23 0x0000000000003dc0     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   23 
+    24 0x0000000000003fd0     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   24 
     25 0x0000000000004000     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   25 
-    26 0x0000000000004040     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   26 
-    27 0x0000000000000000     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   27 
+    26 0x0000000000004060     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   26 
+    27 0x0000000000004080     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   27 
     28 0x0000000000000000     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   28 
     29 0x0000000000000000     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   29 
     30 0x0000000000000000     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   30 
     31 0x0000000000000000     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   31 
     32 0x0000000000000000     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   32 
     33 0x0000000000000000     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   33 
-    34 0x0000000000000000     0 STT_FILE       STB_LOCAL    STV_DEFAULT  ABS crtstuff.c
-    35 0x0000000000001150     0 STT_FUNC       STB_LOCAL    STV_DEFAULT   16 deregister_tm_clones
-    36 0x0000000000001180     0 STT_FUNC       STB_LOCAL    STV_DEFAULT   16 register_tm_clones
-    37 0x00000000000011c0     0 STT_FUNC       STB_LOCAL    STV_DEFAULT   16 __do_global_dtors_aux
-    38 0x0000000000004150     1 STT_OBJECT     STB_LOCAL    STV_DEFAULT   26 completed.8060
-    39 0x0000000000003d70     0 STT_OBJECT     STB_LOCAL    STV_DEFAULT   22 __do_global_dtors_aux_fini_array_entry
-    40 0x0000000000001200     0 STT_FUNC       STB_LOCAL    STV_DEFAULT   16 frame_dummy
-    41 0x0000000000003d60     0 STT_OBJECT     STB_LOCAL    STV_DEFAULT   21 __frame_dummy_init_array_entry
-    42 0x0000000000000000     0 STT_FILE       STB_LOCAL    STV_DEFAULT  ABS h2g2.cpp
-    43 0x0000000000001209   149 STT_FUNC       STB_LOCAL    STV_DEFAULT   16 _Z41__static_initialization_and_destruction_0ii
-    44 0x0000000000004180     1 STT_OBJECT     STB_LOCAL    STV_DEFAULT   26 _ZStL8__ioinit
-    45 0x000000000000132b    28 STT_FUNC       STB_LOCAL    STV_DEFAULT   16 _GLOBAL__sub_I__Z4textB5cxx11
-    46 0x0000000000000000     0 STT_FILE       STB_LOCAL    STV_DEFAULT  ABS crtstuff.c
-    47 0x0000000000002214     0 STT_OBJECT     STB_LOCAL    STV_DEFAULT   20 __FRAME_END__
-    48 0x0000000000000000     0 STT_FILE       STB_LOCAL    STV_DEFAULT  ABS 
-    49 0x0000000000002058     0 STT_NOTYPE     STB_LOCAL    STV_DEFAULT   19 __GNU_EH_FRAME_HDR
-    50 0x0000000000001000     0 STT_FUNC       STB_LOCAL    STV_DEFAULT   12 _init
-    51 0x0000000000003d78     0 STT_OBJECT     STB_LOCAL    STV_DEFAULT   23 _DYNAMIC
-    52 0x0000000000003d70     0 STT_NOTYPE     STB_LOCAL    STV_DEFAULT   21 __init_array_end
-    53 0x0000000000003d60     0 STT_NOTYPE     STB_LOCAL    STV_DEFAULT   21 __init_array_start
-    54 0x0000000000003f78     0 STT_OBJECT     STB_LOCAL    STV_DEFAULT   24 _GLOBAL_OFFSET_TABLE_
-    55 0x0000000000004010     0 STT_NOTYPE     STB_GLOBAL   STV_DEFAULT   25 _edata
-    56 0x000000000000129e    10 STT_FUNC       STB_GLOBAL   STV_DEFAULT   16 _Z6answerv
-    57 0x0000000000004000     0 STT_NOTYPE     STB_WEAK     STV_DEFAULT   25 data_start
-    58 0x0000000000002000     4 STT_OBJECT     STB_GLOBAL   STV_DEFAULT   18 _IO_stdin_used
-    59 0x0000000000000000     0 STT_FUNC       STB_WEAK     STV_DEFAULT  UND __cxa_finalize@@GLIBC_2.2.5
-    60 0x00000000000012a8   131 STT_FUNC       STB_GLOBAL   STV_DEFAULT   16 main
-    61 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND _ZSt4endlIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_@@GLIBCXX_3.4
-    62 0x0000000000004160    32 STT_OBJECT     STB_GLOBAL   STV_DEFAULT   26 _Z4textB5cxx11
-    63 0x0000000000004008     0 STT_OBJECT     STB_GLOBAL   STV_HIDDEN    25 __dso_handle
-    64 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEED1Ev@@GLIBCXX_3.4.21
-    65 0x00000000000013c8     0 STT_FUNC       STB_GLOBAL   STV_HIDDEN    17 _fini
+    34 0x0000000000000000     0 STT_SECTION    STB_LOCAL    STV_DEFAULT   34 
+    35 0x0000000000000000     0 STT_FILE       STB_LOCAL    STV_DEFAULT  ABS crtstuff.c
+    36 0x0000000000001100     0 STT_FUNC       STB_LOCAL    STV_DEFAULT   14 deregister_tm_clones
+    37 0x0000000000001130     0 STT_FUNC       STB_LOCAL    STV_DEFAULT   14 register_tm_clones
+    38 0x0000000000001170     0 STT_FUNC       STB_LOCAL    STV_DEFAULT   14 __do_global_dtors_aux
+    39 0x0000000000004190     1 STT_OBJECT     STB_LOCAL    STV_DEFAULT   27 completed.7325
+    40 0x0000000000003db8     0 STT_OBJECT     STB_LOCAL    STV_DEFAULT   22 __do_global_dtors_aux_fini_array_entry
+    41 0x00000000000011b0     0 STT_FUNC       STB_LOCAL    STV_DEFAULT   14 frame_dummy
+    42 0x0000000000003da8     0 STT_OBJECT     STB_LOCAL    STV_DEFAULT   21 __frame_dummy_init_array_entry
+    43 0x0000000000000000     0 STT_FILE       STB_LOCAL    STV_DEFAULT  ABS h2g2.cpp
+    44 0x00000000000011b5    61 STT_FUNC       STB_LOCAL    STV_DEFAULT   14 _Z41__static_initialization_and_destruction_0ii
+    45 0x0000000000004191     1 STT_OBJECT     STB_LOCAL    STV_DEFAULT   27 _ZStL8__ioinit
+    46 0x00000000000012ad    24 STT_FUNC       STB_LOCAL    STV_DEFAULT   14 _GLOBAL__sub_I_value
+    47 0x0000000000000000     0 STT_FILE       STB_LOCAL    STV_DEFAULT  ABS crtstuff.c
+    48 0x000000000000222c     0 STT_OBJECT     STB_LOCAL    STV_DEFAULT   18 __FRAME_END__
+    49 0x0000000000000000     0 STT_FILE       STB_LOCAL    STV_DEFAULT  ABS 
+    50 0x0000000000002060     0 STT_NOTYPE     STB_LOCAL    STV_DEFAULT   17 __GNU_EH_FRAME_HDR
+    51 0x0000000000001000     0 STT_FUNC       STB_LOCAL    STV_DEFAULT   11 _init
+    52 0x0000000000003dc0     0 STT_OBJECT     STB_LOCAL    STV_DEFAULT   23 _DYNAMIC
+    53 0x0000000000003db8     0 STT_NOTYPE     STB_LOCAL    STV_DEFAULT   21 __init_array_end
+    54 0x0000000000003da8     0 STT_NOTYPE     STB_LOCAL    STV_DEFAULT   21 __init_array_start
+    55 0x0000000000004000     0 STT_OBJECT     STB_LOCAL    STV_DEFAULT   25 _GLOBAL_OFFSET_TABLE_
+    56 0x0000000000004078     0 STT_NOTYPE     STB_GLOBAL   STV_DEFAULT   26 _edata
+    57 0x00000000000011f2     9 STT_FUNC       STB_GLOBAL   STV_DEFAULT   14 _Z6answerv
+    58 0x0000000000004060     0 STT_NOTYPE     STB_WEAK     STV_DEFAULT   26 data_start
+    59 0x0000000000002000     4 STT_OBJECT     STB_GLOBAL   STV_DEFAULT   16 _IO_stdin_used
+    60 0x0000000000000000     0 STT_FUNC       STB_WEAK     STV_DEFAULT  UND __cxa_finalize@@GLIBC_2.2.5
+    61 0x00000000000011fb   178 STT_FUNC       STB_GLOBAL   STV_DEFAULT   14 main
+    62 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND _ZSt4endlIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_@@GLIBCXX_3.4
+    63 0x0000000000004068     0 STT_OBJECT     STB_GLOBAL   STV_HIDDEN    26 __dso_handle
+    64 0x0000000000004070     8 STT_OBJECT     STB_WEAK     STV_HIDDEN    26 DW.ref.__gxx_personality_v0
+    65 0x0000000000001334     0 STT_FUNC       STB_GLOBAL   STV_HIDDEN    15 _fini
     66 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND __cxa_atexit@@GLIBC_2.2.5
-    67 0x0000000000001120    47 STT_FUNC       STB_GLOBAL   STV_DEFAULT   16 _start
-    68 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND __stack_chk_fail@@GLIBC_2.4
-    69 0x0000000000004010     0 STT_OBJECT     STB_GLOBAL   STV_HIDDEN    25 __TMC_END__
+    67 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND _ZdlPv@@GLIBCXX_3.4
+    68 0x00000000000010d0    43 STT_FUNC       STB_GLOBAL   STV_DEFAULT   14 _start
+    69 0x0000000000004078     0 STT_OBJECT     STB_GLOBAL   STV_HIDDEN    26 __TMC_END__
     70 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND _ZSt16__ostream_insertIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_PKS3_l@@GLIBCXX_3.4.9
-    71 0x0000000000004040   272 STT_OBJECT     STB_GLOBAL   STV_DEFAULT   26 _ZSt4cout@@GLIBCXX_3.4
+    71 0x0000000000004080   272 STT_OBJECT     STB_GLOBAL   STV_DEFAULT   27 _ZSt4cout@@GLIBCXX_3.4
     72 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEC1EPKcRKS3_@@GLIBCXX_3.4.21
-    73 0x0000000000004000     0 STT_NOTYPE     STB_GLOBAL   STV_DEFAULT   25 __data_start
-    74 0x0000000000004188     0 STT_NOTYPE     STB_GLOBAL   STV_DEFAULT   26 _end
-    75 0x0000000000004010     0 STT_NOTYPE     STB_GLOBAL   STV_DEFAULT   26 __bss_start
+    73 0x0000000000004060     0 STT_NOTYPE     STB_GLOBAL   STV_DEFAULT   26 __data_start
+    74 0x0000000000004198     0 STT_NOTYPE     STB_GLOBAL   STV_DEFAULT   27 _end
+    75 0x0000000000004078     0 STT_NOTYPE     STB_GLOBAL   STV_DEFAULT   27 __bss_start
     76 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND _ZNSt8ios_base4InitC1Ev@@GLIBCXX_3.4
-    77 0x0000000000001350   101 STT_FUNC       STB_GLOBAL   STV_DEFAULT   16 __libc_csu_init
-    78 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND _ZNSolsEi@@GLIBCXX_3.4
-    79 0x0000000000000000     0 STT_NOTYPE     STB_WEAK     STV_DEFAULT  UND _ITM_deregisterTMCloneTable
-    80 0x00000000000013c0     5 STT_FUNC       STB_GLOBAL   STV_DEFAULT   16 __libc_csu_fini
-    81 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND __libc_start_main@@GLIBC_2.2.5
-    82 0x0000000000000000     0 STT_NOTYPE     STB_WEAK     STV_DEFAULT  UND __gmon_start__
-    83 0x0000000000000000     0 STT_NOTYPE     STB_WEAK     STV_DEFAULT  UND _ITM_registerTMCloneTable
-    84 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND _ZNSt8ios_base4InitD1Ev@@GLIBCXX_3.4
+    77 0x00000000000012d0    93 STT_FUNC       STB_GLOBAL   STV_DEFAULT   14 __libc_csu_init
+    78 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND __gxx_personality_v0@@CXXABI_1.3
+    79 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND _ZNSolsEi@@GLIBCXX_3.4
+    80 0x0000000000000000     0 STT_NOTYPE     STB_WEAK     STV_DEFAULT  UND _ITM_deregisterTMCloneTable
+    81 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND _Unwind_Resume@@GCC_3.0
+    82 0x0000000000001330     1 STT_FUNC       STB_GLOBAL   STV_DEFAULT   14 __libc_csu_fini
+    83 0x0000000000000000     4 STT_TLS        STB_GLOBAL   STV_DEFAULT   20 value
+    84 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND __libc_start_main@@GLIBC_2.2.5
+    85 0x0000000000000000     0 STT_NOTYPE     STB_WEAK     STV_DEFAULT  UND __gmon_start__
+    86 0x0000000000000000     0 STT_NOTYPE     STB_WEAK     STV_DEFAULT  UND _ITM_registerTMCloneTable
+    87 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND _ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE6appendEPKc@@GLIBCXX_3.4.21
+    88 0x0000000000000000     0 STT_FUNC       STB_GLOBAL   STV_DEFAULT  UND _ZNSt8ios_base4InitD1Ev@@GLIBCXX_3.4
 

@@ -36,7 +36,7 @@ all: $(TARGETS) $(TESTS)
 
 test: $(TESTS)
 
-test-%: $(TESTFOLDER)/%.stdout $(BINPREFIX)%
+test-%: $(TESTFOLDER)/%.stdout $(BINPREFIX)% $(TESTTARGET)
 	@echo "Test		$*"
 	@./$(BINPREFIX)$* $(TESTTARGET) | diff -w $< -
 
@@ -68,7 +68,7 @@ lint::
 		exit 1 ; \
 	fi
 
-tidy:: $(TIDYCONFIG)
+tidy:: $(TIDYCONFIG) $(GENFILES)
 	$(VERBOSE) $(TIDY) --config-file=$< $(filter-out $(GENFILES),$(SOURCES)) -- -stdlib=libc++  $(CXXFLAGS)
 
 install: $(TARGETS)
