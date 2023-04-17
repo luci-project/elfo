@@ -1,3 +1,7 @@
+// Elfo - a lightweight parser for the Executable and Linking Format
+// Copyright 2021-2023 by Bernhard Heinloth <heinloth@cs.fau.de>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 #pragma once
 
 #include "ident.hpp"
@@ -23,4 +27,4 @@ struct Types<ELFCLASS::ELFCLASS64> {
 	using Elf_Off = uint64_t;
 };
 
-} // ELF_Def
+}  // namespace ELF_Def

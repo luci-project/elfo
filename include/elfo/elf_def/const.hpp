@@ -1,3 +1,7 @@
+// Elfo - a lightweight parser for the Executable and Linking Format
+// Copyright 2021-2023 by Bernhard Heinloth <heinloth@cs.fau.de>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 #pragma once
 
 #ifdef USE_DLH
@@ -253,8 +257,8 @@ struct Constants {
 		SHT_LOPROC         = 0x70000000,
 		SHT_X86_64_UNWIND  = 0x70000001,
 		SHT_HIPROC         = 0x7FFFFFFF,
-		SHT_LOUSER         = 0x80000000,
-		SHT_HIUSER         = 0xFFFFFFFF,
+		SHT_LOUSER         = 0x80000000,  // NOLINT
+		SHT_HIUSER         = 0xFFFFFFFF,  // NOLINT
 	};
 
 	enum chdr_type : uint32_t {
@@ -652,4 +656,4 @@ struct Constants {
 	};
 };
 
-} // ELF_Def
+}  // namespace ELF_Def

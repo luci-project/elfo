@@ -4,6 +4,10 @@ SRCFOLDER = src
 BUILDDIR ?= .build
 BINPREFIX = elfo-
 
+CPPLINT ?= cpplint
+TIDY ?= clang-tidy
+TIDYCONFIG ?= .clang-tidy
+
 CXXFLAGS ?= -Og -g -static-pie
 CXXFLAGS += -I include/
 CXXFLAGS += -Wall -Wextra -Wno-switch -Wno-unused-variable -Wno-comment
@@ -14,6 +18,8 @@ SOURCES := $(wildcard $(SRCFOLDER)/*.cpp)
 TARGETS := $(addprefix $(BINPREFIX),$(notdir $(SOURCES:%.cpp=%)))
 DEPFILES := $(addprefix $(BUILDDIR)/,$(addsuffix .d,$(TARGETS)))
 LDFLAGS :=
+
+GENFILES := $(addprefix $(SRCFOLDER)/,_str_const.hpp _str_ident.hpp)
 
 TESTFOLDER = test
 TESTTARGET = $(TESTFOLDER)/h2g2
@@ -34,11 +40,11 @@ test-%: $(TESTFOLDER)/%.stdout $(BINPREFIX)% $(TESTTARGET)
 	@echo "Test		$*"
 	@./$(BINPREFIX)$* $(TESTTARGET) | diff -w $< -
 
-$(BUILDDIR)/%.d: $(SRCFOLDER)/%.cpp  $(SRCFOLDER)/_str_const.hpp $(SRCFOLDER)/_str_ident.hpp $(BUILDDIR) $(MAKEFILE_LIST)
+$(BUILDDIR)/%.d: $(SRCFOLDER)/%.cpp $(GENFILES) $(BUILDDIR) $(MAKEFILE_LIST)
 	@echo "DEP		$<"
 	$(VERBOSE) $(CXX) $(CXXFLAGS) -MM -MP -MT $* -MF $@ $<
 
-$(BINPREFIX)%: $(SRCFOLDER)/%.cpp $(SRCFOLDER)/_str_const.hpp $(SRCFOLDER)/_str_ident.hpp $(MAKEFILE_LIST)
+$(BINPREFIX)%: $(SRCFOLDER)/%.cpp $(GENFILES) $(MAKEFILE_LIST)
 	@echo "CXX		$@"
 	$(VERBOSE) $(CXX) $(CXXFLAGS) -o $@ $< $(LDFLAGS)
 
@@ -54,6 +60,17 @@ endef
 $(eval $(call include_str_template,elf_def/const.hpp,ELF_Def Constants))
 $(eval $(call include_str_template,elf_def/ident.hpp,ELF_Def Identification))
 
+lint::
+	@if $(CPPLINT) --quiet --recursive . ; then \
+		echo "Congratulations, coding style obeyed!" ; \
+	else \
+		echo "Coding style violated -- see CPPLINT.cfg for details" ; \
+		exit 1 ; \
+	fi
+
+tidy:: $(TIDYCONFIG)
+	$(VERBOSE) $(TIDY) --config-file=$< $(filter-out $(GENFILES),$(SOURCES)) -- -stdlib=libc++  $(CXXFLAGS)
+
 install: $(TARGETS)
 	$(VERBOSE) install -Dm755 $^ $(INSTALLDIR)
 	$(VERBOSE) if ! echo "$(PATH)" | grep "$(INSTALLDIR)" >/dev/null 2>&1 ; then \
@@ -61,7 +78,7 @@ install: $(TARGETS)
 	fi
 
 clean::
-	$(VERBOSE) rm -f $(DEPFILES)
+	$(VERBOSE) rm -f $(DEPFILES) $(GENFILES)
 	$(VERBOSE) test -d $(BUILDDIR) && rmdir $(BUILDDIR) || true
 
 mrproper:: clean
@@ -75,4 +92,4 @@ ifneq ($(MAKECMDGOALS),clean)
 -include $(DEPFILES)
 endif
 
-.PHONY: all test clean mrproper
+.PHONY: all test clean lint tidy install clean mrproper

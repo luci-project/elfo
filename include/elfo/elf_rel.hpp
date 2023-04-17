@@ -1,3 +1,7 @@
+// Elfo - a lightweight parser for the Executable and Linking Format
+// Copyright 2021-2023 by Bernhard Heinloth <heinloth@cs.fau.de>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 #pragma once
 
 #include "elf.hpp"
@@ -17,7 +21,7 @@ struct Relocator : private ELF_Def::Constants {
 	 * \param entry Relocation
 	 * \param global_offset_table address of the global offset table (in this object)
 	 */
-	Relocator(const RELOC & entry, uintptr_t global_offset_table = 0)
+	explicit Relocator(const RELOC & entry, uintptr_t global_offset_table = 0)
 	  : entry(entry), global_offset_table(global_offset_table) {
 		assert(entry.valid());
 	}
@@ -146,7 +150,7 @@ struct Relocator : private ELF_Def::Constants {
 				case R_386_SIZE32:
 					return Z + A;
 
-				default: // Not recognized!
+				default:  // Not recognized!
 					assert(false);
 					return 0;
 			}
@@ -218,12 +222,12 @@ struct Relocator : private ELF_Def::Constants {
 						return symbol.value() + A;
 
 
-					default: // Not recognized!
+					default:  // Not recognized!
 						assert(false);
 						return 0;
 				}
 
-				default: // Not recognized!
+				default:  // Not recognized!
 					assert(false);
 					return 0;
 			}
@@ -365,7 +369,7 @@ struct Relocator : private ELF_Def::Constants {
 					case R_X86_64_IRELATIVE:
 #ifdef __LP64__
 						return 8;
-#else // ILP32
+#else  // ILP32
 						return 4;
 #endif
 

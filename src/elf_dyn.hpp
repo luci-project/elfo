@@ -1,3 +1,7 @@
+// Elfo - a lightweight parser for the Executable and Linking Format
+// Copyright 2021-2023 by Bernhard Heinloth <heinloth@cs.fau.de>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 #pragma once
 
 #ifdef USE_DLH
@@ -31,15 +35,14 @@ class ELF_Dyn : public ELF<C> {
 	List<VersionNeeded> version_needed;
 	List<VersionDefinition> version_definition;
 
-	ELF_Dyn(uintptr_t start)
+	explicit ELF_Dyn(uintptr_t start)
 	  : ELF<C>(start),
 	    dyn(this->dynamic()),
 	    symbols(dyn.get_symbol_table()),
 	    relocations(dyn.get_relocations()),
 	    relocations_plt(dyn.get_relocations_plt()),
 	    version_needed(dyn.get_version_needed()),
-	    version_definition(dyn.get_version_definition())
-		{}
+	    version_definition(dyn.get_version_definition()) {}
 
 	uint16_t version_index(const char * name) const {
 		for (auto & v : version_needed)

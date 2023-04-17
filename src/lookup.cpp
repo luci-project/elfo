@@ -1,21 +1,34 @@
-#ifdef USE_DLH
-#include <dlh/container/vector.hpp>
-#define vector Vector
-#else
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <cxxabi.h>
-#include <vector>
-using namespace std;
-#endif
+// Elfo - a lightweight parser for the Executable and Linking Format
+// Copyright 2021-2023 by Bernhard Heinloth <heinloth@cs.fau.de>
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 #include <unistd.h>
 #include <fcntl.h>
 #include <cstring>
 #include <cstdio>
 #include <cstdlib>
+#ifdef USE_DLH
+#include <dlh/container/vector.hpp>
+#include <dlh/stream/output.hpp>
+#else
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <cxxabi.h>
 #include <iostream>
 #include <iomanip>
+#include <vector>
+template<class T>
+using Vector = std::vector<T, std::allocator<T>>;
+using std::cerr;
+using std::cout;
+using std::dec;
+using std::hex;
+using std::endl;
+using std::left;
+using std::setw;
+using std::setfill;
+using std::right;
+#endif
 
 #include "elf_dyn.hpp"
 
@@ -81,7 +94,7 @@ static void elfsymbol(const ELF_Dyn<C> & elf, const typename ELF_Dyn<C>::Symbol 
 }
 
 template<ELFCLASS C>
-static  bool elflookup(void * addr, size_t length, const vector<char*> & symbols) {
+static  bool elflookup(void * addr, size_t length, const Vector<char*> & symbols) {
 	ELF_Dyn<C> elf(reinterpret_cast<uintptr_t>(addr));
 	if (!elf.valid(length)) {
 		cerr << "No valid ELF file!" << endl;
@@ -96,10 +109,10 @@ static  bool elflookup(void * addr, size_t length, const vector<char*> & symbols
 		cout << "(" << elf.symbols.count() << " dynamic symbols in file)" << endl;
 	} else {
 		size_t found = 0;
-		for (auto & name : symbols) {
+		for (char * name : symbols) {
 			// Check version
 			uint32_t version = ELF_Dyn<C>::VER_NDX_GLOBAL;
-			auto version_name = strrchr(name, '@');
+			char * version_name = strrchr(name, '@');
 			if (version_name != nullptr) {
 				// Replace '@' by end delimiter
 				*(version_name++) = '\0';
@@ -127,14 +140,14 @@ static  bool elflookup(void * addr, size_t length, const vector<char*> & symbols
 	return success;
 }
 
-static bool lookup(void * addr, size_t length, const vector<char*> & symbols){
+static bool lookup(void * addr, size_t length, const Vector<char*> & symbols) {
 	// Read ELF Identification
 	ELF_Ident * ident = reinterpret_cast<ELF_Ident *>(addr);
 	if (length < sizeof(ELF_Ident) || !ident->valid()) {
 		cerr << "No valid ELF identification header!" << endl;
 		return false;
 	} else if (!ident->data_supported()) {
-		cerr << "Unsupported encoding (must be " << ident->data_host() << ")!" << endl;
+		cerr << "Unsupported encoding (must be " << ELF_Ident::data_host() << ")!" << endl;
 		return false;
 	} else {
 		switch (ident->elfclass()) {
@@ -183,7 +196,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	// Lookup symbols
-	bool success = lookup(addr, length, vector<char*>(argv + 2, argv + argc));
+	bool success = lookup(addr, length, Vector<char*>(argv + 2, argv + argc));
 
 	// Cleanup
 	::munmap(addr, length);

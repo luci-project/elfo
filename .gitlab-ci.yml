@@ -8,3 +8,11 @@ build-test:
     paths:
       - "elfo-*"
 
+coding-style:
+  stage: check
+  image: inf4/stubs:clang-x64
+  before_script:
+    - apt-get update && apt-get install -y libc++-dev cpplint
+  script:
+    - make lint
+    - make tidy

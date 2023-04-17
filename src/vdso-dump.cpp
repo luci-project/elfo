@@ -1,17 +1,26 @@
-#include <elfo/elf.hpp>
+// Elfo - a lightweight parser for the Executable and Linking Format
+// Copyright 2021-2023 by Bernhard Heinloth <heinloth@cs.fau.de>
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
+#include <fcntl.h>
+#include <errno.h>
+#include <unistd.h>
 #ifdef USE_DLH
 #include <dlh/stream/output.hpp>
 #include <dlh/auxiliary.hpp>
 #else
+#include <iostream>
+using std::cerr;
+using std::endl;
+#endif
+
+#include <elfo/elf.hpp>
+
+#ifndef USE_DLH
+// Must be loaded after Elfo, since it loads systems elf.h
 #include <sys/auxv.h>
 #include <sys/types.h>
-#include <iostream>
-using namespace std;
 #endif
-#include <fcntl.h>
-#include <errno.h>
-#include <unistd.h>
 
 int main(int argc, char * argv[]) {
 	if (argc != 2) {

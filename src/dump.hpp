@@ -1,15 +1,29 @@
+// Elfo - a lightweight parser for the Executable and Linking Format
+// Copyright 2021-2023 by Bernhard Heinloth <heinloth@cs.fau.de>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 #pragma once
 
-#ifdef USE_DLH
-#include <dlh/file.hpp>
-#else
-#include <fstream>
-using namespace std;
-#endif
-#include <iostream>
-#include <iomanip>
 #include <cstdint>
 #include <cstring>
+#ifdef USE_DLH
+#include <dlh/stream/output.hpp>
+#include <dlh/file.hpp>
+#else
+#include <iostream>
+#include <fstream>
+#include <iomanip>
+using std::cerr;
+using std::cout;
+using std::dec;
+using std::hex;
+using std::endl;
+using std::left;
+using std::setw;
+using std::setfill;
+using std::right;
+#endif
+
 
 #include <elfo/elf.hpp>
 
@@ -41,11 +55,10 @@ class Dump {
 		if (elf.header.type() != ELF<C>::ET_CORE) {
 			if (note.name() != nullptr && strcmp(note.name(), "GNU") == 0) {
 				switch (note.type()) {
-					case ELF<C>::NT_GNU_ABI_TAG:
-					{
+					case ELF<C>::NT_GNU_ABI_TAG: {
 						assert(note.size() == 16);
 						cout << "NT_GNU_ABI_TAG: ";
-						auto desc = reinterpret_cast<const uint32_t *>(note.description());
+						const uint32_t * desc = reinterpret_cast<const uint32_t *>(note.description());
 						switch (desc[0]) {
 							case 0: cout << "Linux" ; break;
 							case 1: cout << "GNU" ; break;
@@ -57,39 +70,35 @@ class Dump {
 						return;
 					}
 
-					case ELF<C>::NT_GNU_HWCAP:
-					{
+					case ELF<C>::NT_GNU_HWCAP: {
 						cout << "NT_GNU_HWCAP:";
-						auto desc = reinterpret_cast<const uint32_t *>(note.description());
+						const uint32_t * desc = reinterpret_cast<const uint32_t *>(note.description());
 						for (size_t i = 0; i < note.size() / sizeof(uint32_t); i++) {
 							cout << " " << HEXPAD(8) << desc[i];
 						}
 						return;
 					}
 
-					case ELF<C>::NT_GNU_BUILD_ID:
-					{
+					case ELF<C>::NT_GNU_BUILD_ID: {
 						cout << "NT_GNU_BUILD_ID: ";
-						auto desc = reinterpret_cast<const uint8_t *>(note.description());
+						const uint8_t * desc = reinterpret_cast<const uint8_t *>(note.description());
 						for (size_t i = 0; i < note.size(); i++) {
 							cout << HEXPADSHORT(2) << static_cast<uint32_t>(desc[i]);
 						}
 						return;
 					}
 
-					case ELF<C>::NT_GNU_GOLD_VERSION:
-					{
+					case ELF<C>::NT_GNU_GOLD_VERSION: {
 						cout << "NT_GNU_GOLD_VERSION: ";
-						auto desc = reinterpret_cast<const uint8_t *>(note.description());
+						const uint8_t * desc = reinterpret_cast<const uint8_t *>(note.description());
 						for (size_t i = 0; i < note.size(); i++)
 							cout << HEXPADSHORT(2) << static_cast<uint32_t>(desc[i]);
 						return;
 					}
 
-					case ELF<C>::NT_GNU_PROPERTY_TYPE_0:
-					{
+					case ELF<C>::NT_GNU_PROPERTY_TYPE_0: {
 						cout << "NT_GNU_PROPERTY_TYPE_0:";
-						auto desc = reinterpret_cast<const uint32_t *>(note.description());
+						const uint32_t * desc = reinterpret_cast<const uint32_t *>(note.description());
 						for (size_t i = 0; i < note.size() / sizeof(uint32_t); i++) {
 							cout << " " << HEXPAD(8) << desc[i];
 						}
@@ -109,13 +118,13 @@ class Dump {
 			}
 		}
 		cout << note.type() << ":";
-		auto desc = reinterpret_cast<const uint8_t *>(note.description());
+		const uint8_t * desc = reinterpret_cast<const uint8_t *>(note.description());
 		for (size_t i = 0; i < note.size(); i++)
 			cout << " " << HEXPADSHORT(2) << static_cast<uint32_t>(desc[i]);
 	}
 
  public:
-	Dump(const char * buffer) : elf(reinterpret_cast<uintptr_t>(buffer)) {}
+	explicit Dump(const char * buffer) : elf(reinterpret_cast<uintptr_t>(buffer)) {}
 
 	void dynamic(const Array<Dynamic> & dynamic) const {
 		cout << "  Tag                Type                 Name/Value" << endl;
@@ -249,7 +258,7 @@ class Dump {
 
 	void symbols(const Array<Symbol> & symbols) const {
 		cout << "   Num Value              Size  Type           Bind         Vis          Ndx Name" << endl;
-		for (auto & sym: symbols) {
+		for (auto & sym : symbols) {
 			cout << " " << DECPAD(5) << symbols.index(sym)
 			     << " " << HEXPAD(16) << sym.value()
 			     << " " << DECPAD(5) << sym.size()
@@ -302,7 +311,7 @@ class Dump {
 				cout << endl;
 			cout << "  " << DECPAD(4) << i << ":"
 			     << " " << PAD(2) << (version[i] & 0x7fff)
-			     << (version[i] & 0x8000 ? 'h' : ' ');
+			     << ((version[i] & 0x8000) != 0 ? 'h' : ' ');
 		}
 		cout << RESET() << endl
 		     << endl;
@@ -358,7 +367,7 @@ class Dump {
 		// Header
 		cout << "ELF Header " << (elf.header.valid() ? "(valid)" : "(invalid!)") << endl
 		     << "  Magic:  ";
-		for (auto & v: elf.header.e_ident)
+		for (auto & v : elf.header.e_ident)
 			cout << " " << HEXPADSHORT(2) << static_cast<unsigned>(v);
 		cout << endl
 		     << "  File class:                        " << elf.header.ident_class() << endl
@@ -390,7 +399,7 @@ class Dump {
 		     << "  [Nr] Name                Type             Address            Off      Size     EnSz Flg Lk Inf Al" << endl;
 
 		// Section
-		for (auto & section: elf.sections) {
+		for (auto & section : elf.sections) {
 			char flagsbuf[15];
 			char * flags = flagsbuf;
 			if (section.writeable())        *(flags++) = 'W';
@@ -430,7 +439,7 @@ class Dump {
 		// Segment
 		cout << "Program Headers:" << endl
 		     << "  Nr Type              Offset   VirtAddr           PhysAddr           FileSiz  MemSiz   Flg Align" << endl;
-		for (auto & segment: elf.segments) {
+		for (auto & segment : elf.segments) {
 			cout << "  " << DECPAD(2) << elf.segments.index(segment)
 			     << " " << PAD(17) << segment.type()
 			     << " " << HEXPAD(6) << segment.offset()
@@ -452,9 +461,9 @@ class Dump {
 	void section_segment_mapping() const {
 		cout << " Section to Segment Nr mapping:" << endl
 		     << "  Nr Sections" << endl;
-		for (auto & segment: elf.segments) {
+		for (auto & segment : elf.segments) {
 			cout << "  " << DECPAD(2) << elf.segments.index(segment);
-			for (auto & section: elf.sections)
+			for (auto & section : elf.sections)
 				if (segment.offset() <= section.offset() && section.offset() < segment.offset() + segment.size() && strlen(section.name()) > 0)
 					cout << " " << section.name();
 			cout << endl;
@@ -471,73 +480,64 @@ class Dump {
 			section_segment_mapping();
 
 		if (full) {
-			for (auto & section: elf.sections)
+			for (auto & section : elf.sections)
 				switch(section.type()) {
-					case ELF<C>::SHT_REL:
-						{
-							auto rel = section.template get_array<typename ELF<C>::RelocationWithoutAddend>();
-							cout << "Relocation (without addend) section [" << elf.sections.index(section) << "] '" << section.name() << "' at offset " << HEX() << section.offset() << " contains " << DEC() << rel.count() << " entries:" << endl;
-							relocations(rel);
-						}
+					case ELF<C>::SHT_REL: {
+						auto rel = section.template get_array<typename ELF<C>::RelocationWithoutAddend>();
+						cout << "Relocation (without addend) section [" << elf.sections.index(section) << "] '" << section.name() << "' at offset " << HEX() << section.offset() << " contains " << DEC() << rel.count() << " entries:" << endl;
+						relocations(rel);
 						break;
-					case ELF<C>::SHT_RELA:
-						{
-							auto rel = section.template get_array<typename ELF<C>::RelocationWithAddend>();
-							cout << "Relocation (with addend) section [" << elf.sections.index(section) << "] '" << section.name() << "' at offset " << HEX() << section.offset() << " contains " << DEC() << rel.count() << " entries:" << endl;
-							relocations(rel);
-						}
+					}
+					case ELF<C>::SHT_RELA: {
+						auto rel = section.template get_array<typename ELF<C>::RelocationWithAddend>();
+						cout << "Relocation (with addend) section [" << elf.sections.index(section) << "] '" << section.name() << "' at offset " << HEX() << section.offset() << " contains " << DEC() << rel.count() << " entries:" << endl;
+						relocations(rel);
 						break;
-					case ELF<C>::SHT_RELR:
-						{
-							auto rel = section.template get_relative_relocations();
-							cout << "Relocation (relative) section [" << elf.sections.index(section) << "] '" << section.name() << "' at offset " << HEX() << section.offset() << " contains " << DEC() << rel.count() << " entries:" << endl;
-							relocations(rel);
-						}
+					}
+					case ELF<C>::SHT_RELR: {
+						auto rel = section.get_relative_relocations();
+						cout << "Relocation (relative) section [" << elf.sections.index(section) << "] '" << section.name() << "' at offset " << HEX() << section.offset() << " contains " << DEC() << rel.count() << " entries:" << endl;
+						relocations(rel);
 						break;
+					}
 					case ELF<C>::SHT_DYNSYM:
 						cout << "Dynamic ";
 						[[fallthrough]];
-					case ELF<C>::SHT_SYMTAB:
-						{
-							auto sym = section.get_symbols();
-							cout << "Symbol table [" << elf.sections.index(section) << "] '" << section.name() << "' at offset " << HEX() << section.offset() << " contains " << DEC() << sym.count() << " entries:" << endl;
-							symbols(sym);
-						}
+					case ELF<C>::SHT_SYMTAB: {
+						auto sym = section.get_symbols();
+						cout << "Symbol table [" << elf.sections.index(section) << "] '" << section.name() << "' at offset " << HEX() << section.offset() << " contains " << DEC() << sym.count() << " entries:" << endl;
+						symbols(sym);
 						break;
-					case ELF<C>::SHT_DYNAMIC:
-						{
-							auto dyn = section.get_dynamic();
-							cout << "Dynamic section [" << elf.sections.index(section) << "] '" << section.name() << "' at offset " << HEX() << section.offset() << " contains " << DEC() << dyn.count() << " entries:" << endl;
-							dynamic(dyn);
-						}
+					}
+					case ELF<C>::SHT_DYNAMIC: {
+						auto dyn = section.get_dynamic();
+						cout << "Dynamic section [" << elf.sections.index(section) << "] '" << section.name() << "' at offset " << HEX() << section.offset() << " contains " << DEC() << dyn.count() << " entries:" << endl;
+						dynamic(dyn);
 						break;
-					case ELF<C>::SHT_NOTE:
-						{
-							auto n = section.get_notes();
-							cout << "Notes section [" << elf.sections.index(section) << "] '" << section.name() << "' at offset " << HEX() << section.offset() << " contains " << DEC() << n.count() << " entries:" << endl;
-							notes(n);
-						}
+					}
+					case ELF<C>::SHT_NOTE: {
+						auto n = section.get_notes();
+						cout << "Notes section [" << elf.sections.index(section) << "] '" << section.name() << "' at offset " << HEX() << section.offset() << " contains " << DEC() << n.count() << " entries:" << endl;
+						notes(n);
 						break;
-					case ELF<C>::SHT_GNU_VERSYM:
-						{
-							cout << "Version symbol [" << elf.sections.index(section) << "] '" << section.name() << "' at offset " << HEX() << section.offset() << " contains " << DEC() << section.entries() << " entries:" << endl;
-							versions(section.get_versions(), section.entries());
-						}
+					}
+					case ELF<C>::SHT_GNU_VERSYM: {
+						cout << "Version symbol [" << elf.sections.index(section) << "] '" << section.name() << "' at offset " << HEX() << section.offset() << " contains " << DEC() << section.entries() << " entries:" << endl;
+						versions(section.get_versions(), section.entries());
 						break;
-					case ELF<C>::SHT_GNU_VERDEF:
-						{
-							auto verdef = section.get_version_definition();
-							cout << "Version definition [" << elf.sections.index(section) << "] '" << section.name() << "' at offset " << HEX() << section.offset() << " contains " << DEC() << verdef.count() << " entries:" << endl;
-							version_definition(verdef);
-						}
+					}
+					case ELF<C>::SHT_GNU_VERDEF: {
+						auto verdef = section.get_version_definition();
+						cout << "Version definition [" << elf.sections.index(section) << "] '" << section.name() << "' at offset " << HEX() << section.offset() << " contains " << DEC() << verdef.count() << " entries:" << endl;
+						version_definition(verdef);
 						break;
-					case ELF<C>::SHT_GNU_VERNEED:
-						{
-							auto verneed = section.get_version_needed();
-							cout << "Version dependency [" << elf.sections.index(section) << "] '" << section.name() << "' at offset " << HEX() << section.offset() << " contains " << DEC() << verneed.count() << " entries:" << endl;
-							version_needed(verneed);
-						}
+					}
+					case ELF<C>::SHT_GNU_VERNEED: {
+						auto verneed = section.get_version_needed();
+						cout << "Version dependency [" << elf.sections.index(section) << "] '" << section.name() << "' at offset " << HEX() << section.offset() << " contains " << DEC() << verneed.count() << " entries:" << endl;
+						version_needed(verneed);
 						break;
+					}
 				}
 		} else {
 			const auto & dyn = elf.dynamic();
@@ -578,15 +578,15 @@ class Dump {
 				if (!preinit_array.empty() || init != nullptr || !init_array.empty() || !fini_array.empty() || fini != nullptr) {
 					cout << "(De-)Initialize -- " << (preinit_array.count() + (init == nullptr ? 0 : 1) + init_array.count() + fini_array.count() + (fini == nullptr ? 0 : 1)) << " functions:" << endl;
 					for (const auto & i : preinit_array)
-						cout << "  - PREINIT_ARRAY " << (void*)i.data() << endl;
+						cout << "  - PREINIT_ARRAY " << reinterpret_cast<void*>(i.data()) << endl;
 					if (init != nullptr)
-						cout << "  - INIT " << (void*)init << endl;
+						cout << "  - INIT " << reinterpret_cast<void*>(init) << endl;
 					for (const auto & i : init_array)
-						cout << "  - INIT_ARRAY " << (void*)i.data() << endl;
+						cout << "  - INIT_ARRAY " << reinterpret_cast<void*>(i.data()) << endl;
 					for (const auto & i : fini_array)
-						cout << "  - FINI_ARRAY " << (void*)i.data() << endl;
+						cout << "  - FINI_ARRAY " << reinterpret_cast<void*>(i.data()) << endl;
 					if (fini != nullptr)
-						cout << "  - FINI " << (void*)fini << endl;
+						cout << "  - FINI " << reinterpret_cast<void*>(fini) << endl;
 					cout << endl;
 				}
 
@@ -620,7 +620,6 @@ class Dump {
 						cout << "  - RUNPATH " << r.string() << endl;
 					cout << endl;
 				}
-
 			}
 		}
 	}
@@ -634,22 +633,22 @@ static bool dump(char * file, bool full = true) {
 		return false;
 #else
 	// Open File
-	ifstream ifs(file, ios::binary | ios::ate);
+	std::ifstream ifs(file, std::ios::binary | std::ios::ate);
 	if (!ifs.is_open()) {
 		cerr << "Opening " << file << " failed!" << endl;
 		return false;
 	}
 
 	// Get length of file
-	ifstream::pos_type pos = ifs.tellg();
+	std::ifstream::pos_type pos = ifs.tellg();
 	size_t length = pos;
 	cout << "File " << file << " (" << length << " Bytes)" << endl
 	     << endl;
 
 	// Read file into buffer
 	char *buf = new char[length];
-	ifs.seekg(0, ios::beg);
-	ifs.read(buf, length);
+	ifs.seekg(0, std::ios::beg);
+	ifs.read(buf, static_cast<std::streamsize>(length));
 	if (ifs.fail()) {
 		cerr << "Reading " << file << " failed!" << endl;
 		return false;
@@ -662,7 +661,7 @@ static bool dump(char * file, bool full = true) {
 		cerr << "No valid ELF identification header in " << file << "!" << endl;
 		return false;
 	} else if (!ident->data_supported()) {
-		cerr << "Unsupported encoding (" << ident->data() << " instead of " << ident->data_host() << ")!" << endl;
+		cerr << "Unsupported encoding (" << ident->data() << " instead of " << ELF_Ident::data_host() << ")!" << endl;
 		return false;
 	}
 

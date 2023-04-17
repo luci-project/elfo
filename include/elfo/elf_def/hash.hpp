@@ -1,3 +1,7 @@
+// Elfo - a lightweight parser for the Executable and Linking Format
+// Copyright 2021-2023 by Bernhard Heinloth <heinloth@cs.fau.de>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 #pragma once
 
 #include "const.hpp"
@@ -23,14 +27,15 @@ struct GnuHash_header {
  */
 static inline uint32_t hash(const char *s) {
 	uint32_t h = 0;
-	if (s != nullptr)
-		for (; *s; s++) {
+	if (s != nullptr) {
+		for (; *s != 0; s++) {
 			h = (h << 4) + *s;
 			const uint32_t g = h & 0xf0000000;
 			if (g != 0)
 				h ^= g >> 24;
 			h &= ~g;
 		}
+	}
 	return h;
 }
 
@@ -46,4 +51,5 @@ static inline uint_fast32_t gnuhash(const char *s) {
 		h = h * 33 + c;
 	return h & 0xffffffff;
 }
-}  // ELF_Def
+
+}  // namespace ELF_Def

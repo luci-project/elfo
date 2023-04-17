@@ -1,12 +1,20 @@
-#ifndef USE_DLH
-#include <sys/mman.h>
-#include <sys/stat.h>
-using namespace std;
-#endif
-#include <iostream>
+// Elfo - a lightweight parser for the Executable and Linking Format
+// Copyright 2021-2023 by Bernhard Heinloth <heinloth@cs.fau.de>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <limits.h>
 #include <cstring>
+#include <iostream>
+#ifndef USE_DLH
+using std::cerr;
+using std::cout;
+using std::endl;
+#endif
+
 
 #include <elfo/elf.hpp>
 
@@ -23,7 +31,7 @@ static bool setinterp(void * addr, size_t length, const char * interp) {
 		cerr << "New interpreter must not exceed length of old interpreter in ELF file (or have a look at patchelf)!" << endl;
 	} else {
 		cout << "Changing '" << interp_elf << "' to '" << interp << "'..." << endl;
-		return strcpy(interp_elf, interp) == interp_elf;
+		return strncpy(interp_elf, interp, PATH_MAX) == interp_elf;
 	}
 
 	return false;
@@ -75,7 +83,7 @@ int main(int argc, char *argv[]) {
 	if (length < sizeof(ELF_Ident) || !ident->valid()) {
 		cerr << "No valid ELF identification header!" << endl;
 	} else if (!ident->data_supported()) {
-		cerr << "Unsupported encoding (must be " << ident->data_host() << ")!" << endl;
+		cerr << "Unsupported encoding (must be " << ELF_Ident::data_host() << ")!" << endl;
 	} else {
 		switch (ident->elfclass()) {
 			case ELFCLASS::ELFCLASS32:
@@ -88,7 +96,7 @@ int main(int argc, char *argv[]) {
 
 			default:
 				cerr << "Unsupported class '" << ident->elfclass() << "'" << endl;
-				return false;
+				success = false;
 		}
 	}
 

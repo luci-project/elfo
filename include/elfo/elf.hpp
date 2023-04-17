@@ -1,3 +1,7 @@
+// Elfo - a lightweight parser for the Executable and Linking Format
+// Copyright 2021-2023 by Bernhard Heinloth <heinloth@cs.fau.de>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 #pragma once
 
 #ifdef USE_DLH
@@ -29,14 +33,14 @@ class ELF : public ELF_Def::Structures<C> {
 	 * with overloaded parameter for different data types */
 	struct Builtin {
 		// Count trailing zeros
-		static int ctz(unsigned int value) { return __builtin_ctz(value); };
-		static int ctz(unsigned long value) { return __builtin_ctzl(value); };
-		static int ctz(unsigned long long value) { return __builtin_ctzll(value); };
+		static int ctz(unsigned int value) { return __builtin_ctz(value); }
+		static int ctz(unsigned long value) { return __builtin_ctzl(value); }
+		static int ctz(unsigned long long value) { return __builtin_ctzll(value); }
 
 		// Population count (number of 1s)
-		static int popcount(unsigned int value) { return __builtin_popcount(value); };
-		static int popcount(unsigned long value) { return __builtin_popcountl(value); };
-		static int popcount(unsigned long long value) { return __builtin_popcountll(value); };
+		static int popcount(unsigned int value) { return __builtin_popcount(value); }
+		static int popcount(unsigned long value) { return __builtin_popcountl(value); }
+		static int popcount(unsigned long long value) { return __builtin_popcountll(value); }
 	};
 
 	/*! \brief Start address of ELF in memory */
@@ -85,12 +89,12 @@ class ELF : public ELF_Def::Structures<C> {
 		}
 
 		/*! \brief Is this the identical payload? */
-		bool operator==(const Accessor<DT,DT_REF> & o) const {
+		bool operator==(const Accessor<DT, DT_REF> & o) const {
 			return _data == o._data;
 		}
 
 		/*! \brief Is this a different payload? */
-		bool operator!=(const Accessor<DT,DT_REF> & o) const {
+		bool operator!=(const Accessor<DT, DT_REF> & o) const {
 			return _data != o._data;
 		}
 
@@ -115,7 +119,7 @@ class ELF : public ELF_Def::Structures<C> {
 		/*! \brief Iterator constructor
 		 * \param accessor reference to accessor template
 		 */
-		Iterator(const A & accessor)
+		explicit Iterator(const A & accessor)
 		  : accessor{accessor} {}
 
 		/*! \brief Next element
@@ -193,12 +197,12 @@ class ELF : public ELF_Def::Structures<C> {
 
 		/*! \brief Get Iterator for first element */
 		Iterator<A> begin() const {
-			return { _accessor };
+			return Iterator<A>{ _accessor };
 		}
 
 		/*! \brief Get Iterator identicating end of list */
 		Iterator<A> end() const {
-			return { _accessor_value(_accessor, _end) };
+			return Iterator<A>{ _accessor_value(_accessor, _end) };
 		}
 	};
 
@@ -268,6 +272,7 @@ class ELF : public ELF_Def::Structures<C> {
 	template <typename A>
 	class List : public Accessors<A> {
 		using V = typename Accessors<A>::V;
+
 	 public:
 		/*! \brief Construct new List access
 		 * \param accessor \ref Accessor template
@@ -645,7 +650,7 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \param idx symbol index
 		 * \return Symbol version or VER_NDX_GLOBAL if none
 		 */
-		inline uint16_t version(uint32_t idx) const{
+		inline uint16_t version(uint32_t idx) const {
 			return versions == nullptr ? Def::VER_NDX_GLOBAL : (versions[idx] & 0x7fff);
 		}
 
@@ -653,7 +658,7 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \param idx symbol index
 		 * \return true if high order bit is set
 		 */
-		inline bool ignored(uint32_t idx) const{
+		inline bool ignored(uint32_t idx) const {
 			return versions == nullptr ? false : ((versions[idx] & 0x8000) != 0);
 		}
 
@@ -735,7 +740,7 @@ class ELF : public ELF_Def::Structures<C> {
 			const uint32_t * bucket = reinterpret_cast<const uint32_t *>(header + 1);
 			const uint32_t * chain = bucket + header->nbucket;
 
-			for (uint32_t i = bucket[hash_value % (header->nbucket)]; i; i = chain[i])
+			for (uint32_t i = bucket[hash_value % (header->nbucket)]; i != 0; i = chain[i])
 				if (!strcmp(search_name, SymbolTable::name(i)) && check_version(i, required_version))
 					return i;
 
@@ -774,7 +779,7 @@ class ELF : public ELF_Def::Structures<C> {
 				uint32_t h2 = *hashval++;
 				if ((hash_value == (h2 & ~1)) && !strcmp(search_name, SymbolTable::name(n)) && check_version(n, required_version))
 					return n;
-				if (h2 & 1)
+				if ((h2 & 1) != 0)
 					break;
 			}
 			return Def::STN_UNDEF;
@@ -786,7 +791,7 @@ class ELF : public ELF_Def::Structures<C> {
 		 */
 		uint32_t index_by_strcmp(const char *search_name, uint16_t required_version) const {
 			const auto entries = this->count();
-			for (size_t i = 1; i < entries; i++)
+			for (uint32_t i = 1; i < entries; i++)
 				if (!strcmp(search_name, name(i)) && check_version(i, required_version))
 					return i;
 			return Def::STN_UNDEF;
@@ -945,7 +950,7 @@ class ELF : public ELF_Def::Structures<C> {
 	};
 
 	/*! \brief Generic interface for relocations */
-	struct Relocation : Accessor<void,void> {
+	struct Relocation : Accessor<void, void> {
 		/*! \brief Corresponding symbol table offset */
 		const uintptr_t symtaboff;
 		/*! \brief String table offset (for symbol table) */
@@ -983,7 +988,7 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \param ptr Pointer to the memory containting the current relocation
 		 */
 		explicit Relocation(const ELF<C> & elf, uintptr_t symtaboff = 0, uintptr_t strtaboff = 0, bool withAddend = false, void * ptr = nullptr)
-		  : Accessor<void,void>{elf, ptr}, symtaboff{symtaboff}, strtaboff{strtaboff}, withAddend{withAddend} {}
+		  : Accessor<void, void>{elf, ptr}, symtaboff{symtaboff}, strtaboff{strtaboff}, withAddend{withAddend} {}
 
 		/*! \brief Valid relocation */
 		bool valid() const {
@@ -1017,7 +1022,6 @@ class ELF : public ELF_Def::Structures<C> {
 				return static_cast<const typename Def::Rela*>(this->_data)->r_info.sym;
 			else
 				return static_cast<const typename Def::Rel*>(this->_data)->r_info.sym;
-
 		}
 
 		/*! \brief Relocation type (depends on architecture) */
@@ -1094,7 +1098,7 @@ class ELF : public ELF_Def::Structures<C> {
 				uintptr_t base;
 				uint8_t bits;
 
-				Entry(const RelocationRelative & accessor)
+				explicit Entry(const RelocationRelative & accessor)
 				 : entry(accessor), base(accessor.value()), bits(0) {
 					assert(!accessor.is_bitmask());
 				 }
@@ -1281,7 +1285,7 @@ class ELF : public ELF_Def::Structures<C> {
 
 		/*! \brief Tag of entry */
 		typename Def::dyn_tag tag() const {
-			return (typename Def::dyn_tag)(this->_data->d_tag);
+			return static_cast<typename Def::dyn_tag>(this->_data->d_tag);
 		}
 
 		/*! \brief Value of entry */
@@ -1635,11 +1639,11 @@ class ELF : public ELF_Def::Structures<C> {
 			 * \param elf ELF object to which this entry belongs to
 			 * \param strtab String table offset for this entry
 			 */
-			Entry(const ELF<C> & elf, uintptr_t strtaboff = 0, typename Def::dyn_tag filter = Def::DT_NULL)
+			explicit Entry(const ELF<C> & elf, uintptr_t strtaboff = 0, typename Def::dyn_tag filter = Def::DT_NULL)
 			  : Dynamic{elf, strtaboff}, filter{filter} {}
 
 		 private:
-			friend class DynamicTable;
+			friend struct DynamicTable;
 			friend class List<DynamicTable::Entry>;
 			friend class Iterator<DynamicTable::Entry>;
 
@@ -1724,7 +1728,7 @@ class ELF : public ELF_Def::Structures<C> {
 			void * symtab = nullptr;
 			size_t symtabnum = 0;
 
-			for (const auto &dyn: *this) {
+			for (const auto &dyn : *this) {
 				switch (dyn.tag()) {
 					case Def::DT_STRTAB:
 						strtab = fix_offset(dyn.value());;
@@ -1759,7 +1763,7 @@ class ELF : public ELF_Def::Structures<C> {
 			void * header = nullptr;
 			const uint16_t * versions = nullptr;
 
-			for (const auto &dyn: *this) {
+			for (const auto &dyn : *this) {
 				switch (dyn.tag()) {
 					case Def::DT_STRTAB:
 						strtab = fix_offset(dyn.value());
@@ -1870,7 +1874,7 @@ class ELF : public ELF_Def::Structures<C> {
 			size_t relsz = 0;                           // Size of relocation table
 			size_t relent = 0;                          // Size of relocation table entry
 
-			for (const auto &dyn: *this) {
+			for (const auto &dyn : *this) {
 				switch (dyn.tag()) {
 					case Def::DT_STRTAB:
 						strtab = fix_offset(dyn.value());
@@ -1936,7 +1940,7 @@ class ELF : public ELF_Def::Structures<C> {
 			typename Def::dyn_tag pltrel = Def::DT_NULL;  // Type of PLT relocation table (REL or RELA)
 			size_t pltrelsz = 0;                          // Size of PLT relocation table
 
-			for (const auto &dyn: *this) {
+			for (const auto &dyn : *this) {
 				switch (dyn.tag()) {
 					case Def::DT_STRTAB:
 						strtab = fix_offset(dyn.value());
@@ -1980,7 +1984,7 @@ class ELF : public ELF_Def::Structures<C> {
 			size_t relrsz = 0;                          // Size of relocation table
 			size_t relrent = 0;                         // Size of relocation table entry
 
-			for (const auto &dyn: *this) {
+			for (const auto &dyn : *this) {
 				switch (dyn.tag()) {
 					case Def::DT_RELR:
 						relr = data(dyn.value());
@@ -2011,7 +2015,7 @@ class ELF : public ELF_Def::Structures<C> {
 		typedef void (*func_fini_t)();
 
 		/*! \brief Pre-Init functions array */
-		Array<Accessor<func_init_t,func_init_t>> get_preinit_array(uintptr_t offset = 0) const {
+		Array<Accessor<func_init_t, func_init_t>> get_preinit_array(uintptr_t offset = 0) const {
 			return get_func<func_init_t>(Def::DT_PREINIT_ARRAY, Def::DT_PREINIT_ARRAYSZ, offset);
 		}
 
@@ -2024,7 +2028,7 @@ class ELF : public ELF_Def::Structures<C> {
 		}
 
 		/*! \brief Init functions array */
-		Array<Accessor<func_init_t,func_init_t>> get_init_array(uintptr_t offset = 0) const {
+		Array<Accessor<func_init_t, func_init_t>> get_init_array(uintptr_t offset = 0) const {
 			return get_func<func_init_t>(Def::DT_INIT_ARRAY, Def::DT_INIT_ARRAYSZ, offset);
 		}
 
@@ -2045,7 +2049,7 @@ class ELF : public ELF_Def::Structures<C> {
 		}
 
 		/*! \brief De-init functions array */
-		Array<Accessor<func_fini_t,func_fini_t>> get_fini_array(uintptr_t offset = 0) const {
+		Array<Accessor<func_fini_t, func_fini_t>> get_fini_array(uintptr_t offset = 0) const {
 			return get_func<func_fini_t>(Def::DT_FINI_ARRAY, Def::DT_FINI_ARRAYSZ, offset);
 		}
 
@@ -2069,7 +2073,7 @@ class ELF : public ELF_Def::Structures<C> {
 
 
 		/*! \brief Contents of the global offset table */
-		Array<Accessor<void*,void*>> get_global_offset_table() const {
+		Array<Accessor<void*, void*>> get_global_offset_table() const {
 			void * got = nullptr;
 			size_t size = 0;
 			size_t entry_size = 0;
@@ -2100,7 +2104,7 @@ class ELF : public ELF_Def::Structures<C> {
 			}
 
 			assert(size == 0 || entry_size != 0);
-			return { Accessor<void*,void*>{elf()}, got, size > 0 ? 3 + size / entry_size : 0 };
+			return { Accessor<void*, void*>{elf()}, got, size > 0 ? 3 + size / entry_size : 0 };
 		}
 
 		/*! \brief Pointer to the global offset table */
@@ -2129,6 +2133,7 @@ class ELF : public ELF_Def::Structures<C> {
 					return dyn;
 			return Dynamic{elf()};  // 0 == UNDEF
 		}
+
 	 private:
 		friend struct Segment;
 
@@ -2155,7 +2160,7 @@ class ELF : public ELF_Def::Structures<C> {
 
 		/*! \brief Helper to get function pointer array */
 		template<typename F>
-		Array<Accessor<F,F>> get_func(typename Def::dyn_tag tag_start, typename Def::dyn_tag tag_size, uintptr_t offset = 0) const {
+		Array<Accessor<F, F>> get_func(typename Def::dyn_tag tag_start, typename Def::dyn_tag tag_size, uintptr_t offset = 0) const {
 			void * start = nullptr;
 			size_t size = 0;
 			for (const auto & dyn : *this) {
@@ -2164,7 +2169,7 @@ class ELF : public ELF_Def::Structures<C> {
 				else if (dyn.tag() == tag_size)
 					size = dyn.value();
 			}
-			return { Accessor<F,F>{elf()}, start, size / sizeof(void*) };
+			return { Accessor<F, F>{elf()}, start, size / sizeof(void*) };
 		}
 
 		/*! \brief add offset to function pointer */
@@ -2467,7 +2472,7 @@ class ELF : public ELF_Def::Structures<C> {
 	/*! \brief Construct new ELF object
 	 * \paran address Pointer to start adress of memory mapped file
 	 */
-	ELF(uintptr_t address)
+	explicit ELF(uintptr_t address)
 	 :  header{*reinterpret_cast<Header*>(address)},
 	    segments{Segment{*this}, data(header.e_phoff), header.e_phnum},
 	    sections{Section{*this}, data(header.e_shoff), header.e_shnum} {
@@ -2480,7 +2485,7 @@ class ELF : public ELF_Def::Structures<C> {
 	/*! \brief Construct new ELF object
 	 * \paran address Pointer to start adress of memory mapped file
 	 */
-	ELF(void * address)
+	explicit ELF(void * address)
 	  : ELF{reinterpret_cast<uintptr_t>(address)} {};
 
 #ifdef VIRTUAL
@@ -2605,7 +2610,7 @@ class ELF : public ELF_Def::Structures<C> {
 	 * \return String
 	 */
 	const char * string(uint16_t section_index, uint32_t offset) const {
-		return string(sections.at(section_index), offset);
+		return this->string(sections.at(section_index), offset);
 	}
 
 	/*! \brief Calculate size of Elf
@@ -2661,7 +2666,7 @@ struct AddressWidth<4> { typedef ELF<ELFCLASS::ELFCLASS32> type; };
 template<>
 struct AddressWidth<8> { typedef ELF<ELFCLASS::ELFCLASS64> type; };
 
-} // ELF_Def
+}  // namespace ELF_Def
 
 using Elf = typename ELF_Def::AddressWidth<sizeof(void*)>::type;
 using Elf32 = ELF<ELFCLASS::ELFCLASS32>;
