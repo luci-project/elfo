@@ -27,13 +27,16 @@ static bool setinterp(void * addr, size_t length, const char * interp) {
 	char * interp_elf = const_cast<char *>(elf.interpreter());
 	if (interp_elf == nullptr) {
 		cerr << "No interpreter in ELF file!" << endl;
-	} else if (strlen(interp_elf) < strlen(interp)) {
-		cerr << "New interpreter must not exceed length of old interpreter in ELF file (or have a look at patchelf)!" << endl;
 	} else {
-		cout << "Changing '" << interp_elf << "' to '" << interp << "'..." << endl;
-		return strncpy(interp_elf, interp, PATH_MAX) == interp_elf;
+		size_t len_avail = strlen(interp_elf);
+		size_t len_needed = strlen(interp);
+		if (len_avail < len_needed) {
+			cerr << "New interpreter name length (" << len_needed << ") must not exceed length of old interpreter (" << len_avail << ") in ELF file (or have a look at patchelf)!" << endl;
+		} else {
+			cout << "Changing '" << interp_elf << "' to '" << interp << "'..." << endl;
+			return strncpy(interp_elf, interp, len_avail) == interp_elf;
+		}
 	}
-
 	return false;
 }
 
