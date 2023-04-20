@@ -460,8 +460,7 @@ class ELF : public ELF_Def::Structures<C> {
 			assert(type() == Def::PT_DYNAMIC);
 			size_t entries = 0;
 			uintptr_t strtaboff = 0;
-			bool absolute_address = false;
-			void * dyn = load_dynamic(mapped, strtaboff, entries, absolute_address);
+			void * dyn = load_dynamic(mapped, strtaboff, entries);
 			return { Dynamic{this->_elf, strtaboff}, dyn, entries };
 		}
 
@@ -472,22 +471,23 @@ class ELF : public ELF_Def::Structures<C> {
 			assert(type() == Def::PT_DYNAMIC);
 			size_t entries = 0;
 			uintptr_t strtaboff = 0;
-			bool absolute_address = false;
-			void * dyn = load_dynamic(mapped, strtaboff, entries, absolute_address);
-			return DynamicTable{this->_elf, dyn, entries, strtaboff, !mapped, absolute_address};
+			void * dyn = load_dynamic(mapped, strtaboff, entries);
+			return DynamicTable{this->_elf, dyn, entries, strtaboff, !mapped};
 		}
 
 	 private:
-		void * load_dynamic(bool mapped, uintptr_t & strtaboff, size_t & entries, bool & absolute_address) const {
+		void * load_dynamic(bool mapped, uintptr_t & strtaboff, size_t & entries) const {
 			// Static, non relocatable binaries use absolute addressing
-			absolute_address = this->_elf.header.type() == Def::ET_EXEC;
+			bool absolute_address = this->_elf.header.type() == Def::ET_EXEC;
 
 			// If mapped use virtual address, otherwise offset
 			typename Def::Dyn * dyn;
-			if (mapped)
-				dyn = reinterpret_cast<typename Def::Dyn *>((absolute_address ? 0 : this->_elf.start()) + virt_addr());
+			if (!mapped)
+				dyn = reinterpret_cast<typename Def::Dyn *>(this->_elf.start() + offset());
+			else if (absolute_address)
+				dyn = reinterpret_cast<typename Def::Dyn *>(virt_addr());
 			else
-				dyn = reinterpret_cast<typename Def::Dyn *>(this->_elf.data(offset()));
+				dyn = reinterpret_cast<typename Def::Dyn *>(this->_elf.start() + virt_addr() - this->_elf.virt_offset());
 
 			size_t limit = (size() / sizeof(*dyn)) - 1;
 			entries = 0;
@@ -499,6 +499,8 @@ class ELF : public ELF_Def::Structures<C> {
 				strtaboff = DynamicTable::translate(this->_elf, strtaboff);
 			else if (absolute_address)
 				strtaboff -= this->_elf.start();
+			else
+				strtaboff -= this->_elf.virt_offset();
 
 			entries++;
 
@@ -1627,8 +1629,6 @@ class ELF : public ELF_Def::Structures<C> {
 	struct DynamicTable : public Array<Dynamic> {
 		/*! \brief Translate from virtual memory to file offset (required if not mapped according to segments) */
 		const bool translate_address;
-		/*! \brief Offsets are absolute address (= non dynamic Elf) */
-		const bool absolute_address;
 
 		/*! \brief Filter list entries */
 		struct Entry : public Dynamic {
@@ -1682,12 +1682,12 @@ class ELF : public ELF_Def::Structures<C> {
 		 * \param strtaboff Offset to associated string table
 		 * \param translate_address Difference between virtual address (used in dynamic) and file offset needs fix of offset
 		 */
-		DynamicTable(const ELF<C> & elf, void * dyntab, size_t dyntabentries, uintptr_t strtaboff, bool translate_address, bool absolute_address)
-		  : Array<Dynamic>{Dynamic{elf, strtaboff}, dyntab, dyntabentries}, translate_address{translate_address}, absolute_address(absolute_address) {}
+		DynamicTable(const ELF<C> & elf, void * dyntab, size_t dyntabentries, uintptr_t strtaboff, bool translate_address)
+		  : Array<Dynamic>{Dynamic{elf, strtaboff}, dyntab, dyntabentries}, translate_address{translate_address} {}
 
 		/*! \brief Empty (non-existing) dynamic table */
 		explicit DynamicTable(const ELF<C> & elf)
-		  : Array<Dynamic>{Dynamic{elf}, 0, 0}, translate_address{false}, absolute_address{false}  {}
+		  : Array<Dynamic>{Dynamic{elf}, 0, 0}, translate_address{false}  {}
 
 		/*! \brief Get the corresponding ELF */
 		const ELF<C> & elf() const {
@@ -2178,7 +2178,7 @@ class ELF : public ELF_Def::Structures<C> {
 			return reinterpret_cast<F>(reinterpret_cast<uintptr_t>(f) + offset);
 		}
 
-		/*! \brief translate virtual address according to load segments into offsets*/
+		/*! \brief translate virtual address according to load segments into offsets */
 		static uintptr_t translate(const ELF<C> & elf, uintptr_t offset) {
 			for (const auto & s : elf.segments)
 				if (s.type() == Def::PT_LOAD && offset >= s.virt_addr() && offset <= s.virt_addr() + s.size())  {
@@ -2197,7 +2197,7 @@ class ELF : public ELF_Def::Structures<C> {
 		inline uintptr_t fix_offset(uintptr_t offset) const {
 			if (translate_address)
 				return translate(elf(), offset);
-			else if (absolute_address)
+			else if (elf().header.type() == Def::ET_EXEC)
 				return offset - elf().start();
 			else
 				return offset;
@@ -2210,7 +2210,7 @@ class ELF : public ELF_Def::Structures<C> {
 		inline void * data(uintptr_t offset) const {
 			if (translate_address)
 				return elf().data(translate(elf(), offset));
-			else if (absolute_address)
+			else if (elf().header.type() == Def::ET_EXEC)
 				return reinterpret_cast<void*>(offset);
 			else
 				return elf().data(offset);
@@ -2474,8 +2474,8 @@ class ELF : public ELF_Def::Structures<C> {
 	 */
 	explicit ELF(uintptr_t address)
 	 :  header{*reinterpret_cast<Header*>(address)},
-	    segments{Segment{*this}, data(header.e_phoff), header.e_phnum},
-	    sections{Section{*this}, data(header.e_shoff), header.e_shnum} {
+	    segments{Segment{*this}, reinterpret_cast<void *>(start() + header.e_phoff), header.e_phnum},
+	    sections{Section{*this}, reinterpret_cast<void *>(start() + header.e_shoff), header.e_shnum} {
 		assert(address != 0);
 		assert(sizeof(Header) == header.e_ehsize);
 		assert(sizeof(typename Def::Phdr) == header.e_phentsize || header.e_phnum == 0);
@@ -2504,7 +2504,19 @@ class ELF : public ELF_Def::Structures<C> {
 	 * \return pointer to data
 	 */
 	inline void * data(uintptr_t displacement = 0) const {
-		return reinterpret_cast<void *>(start() + displacement);
+		return reinterpret_cast<void *>(start() + displacement - (header.type() != Def::ET_EXEC ? virt_offset() : 0));
+	}
+
+	/*! \brief Difference between an relative address in the ELF file and the corresponding address in memory
+	 * \return Offset (determined using the PHDR segment entry)
+	 */
+	uintptr_t virt_offset() const {
+		if (!segments.empty()) {
+			auto first = segments.at(0);
+			if (first.type() == Def::PT_PHDR)
+				return first.virt_addr() - first.offset();
+		}
+		return 0;
 	}
 
 	/*! \brief Check if this file seems to be valid (using file size and offsets)
