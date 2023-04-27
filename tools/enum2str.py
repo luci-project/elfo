@@ -41,7 +41,7 @@ inline ostream& enum_value_hide(ostream& os) {{ _enum_value = false; return os; 
 """
 
 fstart = """
-ostream& operator<<(ostream& os, {ident} val) {{
+inline ostream& operator<<(ostream& os, {ident} val) {{
 	switch(val) {{"""
 fcase = '		case {ident}::{name}: return os << (_enum_value ? "{name} ({value})" : "{name}");'
 fend = """	}}

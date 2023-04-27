@@ -1731,7 +1731,7 @@ class ELF : public ELF_Def::Structures<C> {
 			for (const auto &dyn : *this) {
 				switch (dyn.tag()) {
 					case Def::DT_STRTAB:
-						strtab = fix_offset(dyn.value());;
+						strtab = fix_offset(dyn.value());
 						break;
 					case Def::DT_SYMTAB:
 						symtab = data(dyn.value());
@@ -2670,13 +2670,19 @@ class ELF : public ELF_Def::Structures<C> {
 namespace ELF_Def {
 
 template<size_t B>
-struct AddressWidth { typedef ELF<ELFCLASS::ELFCLASSNONE> type; };
+struct AddressWidth {
+	typedef ELF<ELFCLASS::ELFCLASSNONE> type;
+};
 
 template<>
-struct AddressWidth<4> { typedef ELF<ELFCLASS::ELFCLASS32> type; };
+struct AddressWidth<4> {
+	typedef ELF<ELFCLASS::ELFCLASS32> type;
+};
 
 template<>
-struct AddressWidth<8> { typedef ELF<ELFCLASS::ELFCLASS64> type; };
+struct AddressWidth<8> {
+	typedef ELF<ELFCLASS::ELFCLASS64> type;
+};
 
 }  // namespace ELF_Def
 
