@@ -42,7 +42,7 @@ struct Relocator : private ELF_Def::Constants {
 
 			default:  // unsupported architecture
 				assert(false);
-				return 0;
+				return false;
 		}
 	}
 
@@ -69,7 +69,7 @@ struct Relocator : private ELF_Def::Constants {
 
 			default:  // unsupported architecture
 				assert(false);
-				return 0;
+				return false;
 		}
 	}
 
