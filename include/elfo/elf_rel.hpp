@@ -249,7 +249,8 @@ struct Relocator : private ELF_Def::Constants {
 	template<typename Symbol>
 	inline uintptr_t value_external(uintptr_t base, const Symbol & symbol, uintptr_t symbol_base, uintptr_t plt_entry = 0, uintptr_t tls_module_id = 0, intptr_t tls_offset = 0) const {
 		auto v = value(base, symbol, symbol_base, plt_entry, tls_module_id, tls_offset);
-		if (symbol.type() == STT_GNU_IFUNC || is_indirect()) {
+		if ((symbol.type() == STT_GNU_IFUNC || is_indirect())) {
+			assert(v != NULL);
 			typedef uintptr_t (*indirect_t)();
 			indirect_t func = reinterpret_cast<indirect_t>(v);
 			auto r = func();
