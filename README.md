@@ -34,6 +34,16 @@ Dump the contents of the virtual dynamic shared object (residing in memory) into
 
 Find a symbol in the dynamic section of an ELF file (using hash, if possible).
 
+### setInterp
+
+Change the interpreter string (to a path with less or equal length)
+
+
+Author & License
+----------------
+
+*Elfo* is part of the *Luci*-project, which is being developed by [Bernhard Heinloth](https://sys.cs.fau.de/person/heinloth) of the [https://sys.cs.fau.de/](Department of Computer Science 4) at [https://www.fau.eu/](Friedrich-Alexander-Universität Erlangen-Nürnberg) and is available under the [LICENSE.md](GNU Affero General Public License, Version 3 (AGPL v3)).
+
 
 Name
 ----
