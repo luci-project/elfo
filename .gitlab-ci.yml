@@ -11,9 +11,9 @@ gcc-dlh:
   before_script:
     - env
     - git clone ${CI_SERVER_PROTOCOL}://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}:${CI_SERVER_PORT}/${CI_PROJECT_NAMESPACE}/dlh.git
-    - make -C dlh LEGACY=1
+    - make -C dlh CXX=g++ LEGACY=1
   script:
-    - make DLH=./dlh
+    - make CXX=g++ DLH=./dlh
   artifacts:
     paths:
       - "elfo-*"
@@ -21,7 +21,19 @@ gcc-dlh:
 clang:
   image: inf4/luci:ubuntu-jammy
   script:
-    - make CXX=clang++ VERBOSE=
+    - make CXX=clang++
+  artifacts:
+    paths:
+      - "elfo-*"
+
+clang-dlh:
+  image: inf4/luci:ubuntu-jammy
+  before_script:
+    - env
+    - git clone ${CI_SERVER_PROTOCOL}://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}:${CI_SERVER_PORT}/${CI_PROJECT_NAMESPACE}/dlh.git
+    - make -C dlh CXX=clang++ LEGACY=1
+  script:
+    - make CXX=clang++ DLH=./dlh
   artifacts:
     paths:
       - "elfo-*"
