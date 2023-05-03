@@ -31,7 +31,10 @@ CXXFLAGS += -fno-exceptions -fno-rtti -fno-use-cxa-atexit
 CXXFLAGS += -nostdlib -nostdinc
 LDFLAGS += -ldlh -lgcc
 else
-CXXFLAGS += -stdlib=libc++ -fPIC -static-pie
+CXXFLAGS += -fPIC -static-pie
+ifeq ($(CXX),clang++)
+CXXFLAGS += -stdlib=libc++
+endif
 endif
 
 all: $(TARGETS) $(TESTS)
