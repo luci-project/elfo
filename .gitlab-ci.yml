@@ -9,7 +9,6 @@ gcc:
 gcc-dlh:
   image: inf4/luci:ubuntu-jammy
   before_script:
-    - env
     - git clone ${CI_SERVER_PROTOCOL}://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}:${CI_SERVER_PORT}/${CI_PROJECT_NAMESPACE}/dlh.git
     - make -C dlh CXX=g++ LEGACY=1
   script:
@@ -29,7 +28,6 @@ clang:
 clang-dlh:
   image: inf4/luci:ubuntu-jammy
   before_script:
-    - env
     - git clone ${CI_SERVER_PROTOCOL}://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}:${CI_SERVER_PORT}/${CI_PROJECT_NAMESPACE}/dlh.git
     - make -C dlh CXX=clang++ LEGACY=1
   script:
