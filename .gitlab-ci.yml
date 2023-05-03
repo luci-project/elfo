@@ -1,27 +1,26 @@
 gcc:
-  image: inf4/stubs:gcc-x64
-  before_script:
-    - apt-get update && apt-get install -y python3 python3-pyparsing
+  image: inf4/luci:ubuntu-jammy
   script:
     - make
+    - make test
   artifacts:
     paths:
       - "elfo-*"
 
 clang:
-  image: inf4/stubs:clang-x64
+  image: inf4/luci:ubuntu-jammy
   before_script:
-    - apt-get update && apt-get install -y python3 python3-pyparsing libc++-dev
+    - update-alternatives --install /usr/bin/cc cc /usr/bin/clang-11 100 \
+    - update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-11 100
   script:
     - make
+    - make test
   artifacts:
     paths:
       - "elfo-*"
 
 style:
-  image: inf4/stubs:clang-x64
-  before_script:
-    - apt-get update && apt-get install -y python3 python3-pyparsing libc++-dev cpplint
+  image: inf4/luci:ubuntu-jammy
   script:
     - make lint
     - make tidy
