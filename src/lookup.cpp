@@ -63,7 +63,25 @@ static void elfsymbol(const ELF_Dyn<C> & elf, const typename ELF_Dyn<C>::Symbol 
 	auto index = elf.symbols.index(sym);
 	cout << "Symbol [" << index << "] '" << sym.name() << "':" << endl;
 
-#ifndef USE_DLH
+#ifdef USE_DLH
+	const char * sym_name = sym.name();
+	if (sym_name[0] == '_' && sym_name[1] == 'Z') {
+		cout << "  Demangled: " << flush;
+		const char * argv[] = { "/bin/c++filt", "-i", sym_name, nullptr };
+		int pid = fork();
+		if (pid == 0) {
+			Syscall::execv(argv[0], argv);
+			exit(EXIT_FAILURE);
+		} else {
+			int status = 0;
+			Syscall::waitpid(pid, &status, 0);
+			if (WIFSIGNALED(status))
+				cout << '[' << argv[0] << " aborted with signal " << WTERMSIG(status) << ']' << endl;
+			else if (WIFEXITED(status) && WEXITSTATUS(status) != 0)
+				cout << '[' << argv[0] << " exited with status " << WEXITSTATUS(status) << ']' << endl;
+		}
+	}
+#else
 	int status;
 	char * name = abi::__cxa_demangle(sym.name(), 0, 0, &status);
 	if (status == 0 && strcmp(name, sym.name()) != 0)
@@ -188,7 +206,7 @@ int main(int argc, char *argv[]) {
 	size_t length = sb.st_size;
 
 	// Map file
-	void * addr = ::mmap(NULL, length, PROT_READ, MAP_PRIVATE, fd, 0);
+	void * addr = ::mmap(nullptr, length, PROT_READ, MAP_PRIVATE, fd, 0);
 	if (addr == MAP_FAILED) {
 		::perror("mmap");
 		::close(fd);

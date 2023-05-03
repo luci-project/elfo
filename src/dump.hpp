@@ -379,7 +379,7 @@ class Dump {
 		cout << "  Type:                              " << elf.header.type() << endl
 		     << "  Machine:                           " << elf.header.machine() << endl
 		     << "  Version:                           " << elf.header.version() << endl
-		     << "  Entry point address:               " << reinterpret_cast<void*>(elf.header.entry()) << endl
+		     << "  Entry point address:               " << HEX() << elf.header.entry() << endl
 		     << "  Start of program headers:          " << DEC() << elf.header.e_phoff << " (bytes into file)" << endl
 		     << "  Start of section headers:          " << DEC() << elf.header.e_shoff << " (bytes into file)" << endl
 		     << "  Flags:                             " << DEC() << elf.header.flags() << endl
@@ -563,9 +563,9 @@ class Dump {
 
 				auto got = dyn.get_global_offset_table();
 				if (!got.empty()) {
-					cout << "Global offset table contains " << got.count() << " entries:" << endl;
+					cout << "Global offset table contains " << DEC() << got.count() << " entries:" << endl;
 					for (const auto & e : got)
-						cout << "  GOT[" << got.index(e) << "] = " << e.data() << endl;
+						cout << "  GOT[" << DEC() << got.index(e) << "] = " << HEX() << reinterpret_cast<uintptr_t>(e.data()) << endl;
 					cout << endl;
 				}
 
@@ -578,15 +578,15 @@ class Dump {
 				if (!preinit_array.empty() || init != nullptr || !init_array.empty() || !fini_array.empty() || fini != nullptr) {
 					cout << "(De-)Initialize -- " << (preinit_array.count() + (init == nullptr ? 0 : 1) + init_array.count() + fini_array.count() + (fini == nullptr ? 0 : 1)) << " functions:" << endl;
 					for (const auto & i : preinit_array)
-						cout << "  - PREINIT_ARRAY " << reinterpret_cast<void*>(i.data()) << endl;
+						cout << "  - PREINIT_ARRAY " << HEX() << reinterpret_cast<uintptr_t>(i.data()) << endl;
 					if (init != nullptr)
-						cout << "  - INIT " << reinterpret_cast<void*>(init) << endl;
+						cout << "  - INIT " << HEX() << reinterpret_cast<uintptr_t>(init) << endl;
 					for (const auto & i : init_array)
-						cout << "  - INIT_ARRAY " << reinterpret_cast<void*>(i.data()) << endl;
+						cout << "  - INIT_ARRAY " << HEX() << reinterpret_cast<uintptr_t>(i.data()) << endl;
 					for (const auto & i : fini_array)
-						cout << "  - FINI_ARRAY " << reinterpret_cast<void*>(i.data()) << endl;
+						cout << "  - FINI_ARRAY " << HEX() << reinterpret_cast<uintptr_t>(i.data()) << endl;
 					if (fini != nullptr)
-						cout << "  - FINI " << reinterpret_cast<void*>(fini) << endl;
+						cout << "  - FINI " << HEX() << reinterpret_cast<uintptr_t>(fini) << endl;
 					cout << endl;
 				}
 
@@ -626,7 +626,7 @@ class Dump {
 };
 
 static bool dump(char * file, bool full = true) {
-#if USE_DLH
+#ifdef USE_DLH
 	size_t length;
 	char * buf = File::contents::get(file, length);
 	if (buf == nullptr)
@@ -642,9 +642,10 @@ static bool dump(char * file, bool full = true) {
 	// Get length of file
 	std::ifstream::pos_type pos = ifs.tellg();
 	size_t length = pos;
+#endif
 	cout << "File " << file << " (" << length << " Bytes)" << endl
 	     << endl;
-
+#ifndef USE_DLH
 	// Read file into buffer
 	char *buf = new char[length];
 	ifs.seekg(0, std::ios::beg);

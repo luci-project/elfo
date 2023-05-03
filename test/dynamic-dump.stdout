@@ -120,8 +120,8 @@ PLT relocation table contains 9 entries:
 
 Global offset table contains 12 entries:
   GOT[0] = 0x3dc0
-  GOT[1] = 0
-  GOT[2] = 0
+  GOT[1] = 0x0
+  GOT[2] = 0x0
   GOT[3] = 0x1036
   GOT[4] = 0x1046
   GOT[5] = 0x1056

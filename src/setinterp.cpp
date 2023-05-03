@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
 	size_t length = sb.st_size;
 
 	// Map file
-	void * addr = ::mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	void * addr = ::mmap(nullptr, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	if (addr == MAP_FAILED) {
 		::perror("mmap");
 		::close(fd);

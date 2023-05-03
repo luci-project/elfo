@@ -8,7 +8,7 @@ CPPLINT ?= cpplint
 TIDY ?= clang-tidy
 TIDYCONFIG ?= .clang-tidy
 
-CXXFLAGS ?= -Og -g -fPIC -static-pie
+CXXFLAGS ?= -Og -g
 CXXFLAGS += -I include/
 CXXFLAGS += -Wall -Wextra -Wno-switch -Wno-unused-variable -Wno-comment
 
@@ -27,9 +27,11 @@ TESTS := $(patsubst $(TESTFOLDER)/%.stdout,test-%,$(wildcard $(TESTFOLDER)/*.std
 
 ifdef DLH
 CXXFLAGS += -std=c++17 -I $(DLH)/legacy -I $(DLH)/include -L $(DLH) -DUSE_DLH
-CXXFLAGS += -fno-exceptions -fno-rtti -fno-use-cxa-atexit -no-pie
+CXXFLAGS += -fno-exceptions -fno-rtti -fno-use-cxa-atexit
 CXXFLAGS += -nostdlib -nostdinc
-LDFLAGS += -ldlh
+LDFLAGS += -ldlh -lgcc
+else
+CXXFLAGS += -stdlib=libc++ -fPIC -static-pie
 endif
 
 all: $(TARGETS) $(TESTS)
