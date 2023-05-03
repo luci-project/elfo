@@ -3,7 +3,7 @@ Hi, I'm Elfo!
 
 A really lightweight, optimistic & naive C++ (header-only) parser for the [Executable and Linking Format](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format), supporting common GNU/[Linux](https://refspecs.linuxfoundation.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/elf-generic.html) extensions.
 
-This library was written for a [small dynamic linker & loader](../luci), hence it directly accesses the memory mapped file without requiring dynamic memory allocation.
+This library was written for a [small dynamic linker & loader](/luci-project/luci), hence it directly accesses the memory mapped file without requiring dynamic memory allocation.
 However, it is still designed with academic purposes in mind and therefore not optimized for best performance.
 
 Unless you are happy with those limitations, you should better take look at more mature projects like [ELFIO](https://github.com/serge1/ELFIO).
