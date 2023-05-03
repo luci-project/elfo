@@ -10,7 +10,7 @@ gcc:
 clang:
   image: inf4/luci:ubuntu-jammy
   before_script:
-    - update-alternatives --install /usr/bin/cc cc /usr/bin/clang-11 100 \
+    - update-alternatives --install /usr/bin/cc cc /usr/bin/clang-11 100
     - update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-11 100
   script:
     - make
