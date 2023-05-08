@@ -12,7 +12,11 @@ CXXFLAGS ?= -Og -g
 CXXFLAGS += -I include/
 CXXFLAGS += -Wall -Wextra -Wno-switch -Wno-unused-variable -Wno-comment
 
-INSTALLDIR ?= $(HOME)/.local/bin
+ifeq ($(HOME),/root)
+	INSTALLDIR ?= /usr/local/bin
+else
+	INSTALLDIR ?= $(HOME)/.local/bin
+endif
 
 SOURCES := $(wildcard $(SRCFOLDER)/*.cpp)
 TARGETS := $(addprefix $(BINPREFIX),$(notdir $(SOURCES:%.cpp=%)))
@@ -78,7 +82,7 @@ tidy:: $(TIDYCONFIG) $(GENFILES)
 
 install: $(TARGETS)
 	$(VERBOSE) install -Dm755 $^ $(INSTALLDIR)
-	$(VERBOSE) if ! echo "$(PATH)" | grep "$(INSTALLDIR)" >/dev/null 2>&1 ; then \
+	$(VERBOSE) if ! echo "$(PATH)" | egrep '(^|:)$(INSTALLDIR)(:|$$)' >/dev/null 2>&1 ; then \
 		echo "You have to add '$(INSTALLDIR)' to PATH!" ; \
 	fi
 
