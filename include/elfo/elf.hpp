@@ -567,12 +567,17 @@ class ELF : public ELF_Def::Structures<C> {
 			return this->_data->st_size;
 		}
 
-		/*! \brief Index of the section containing the symbol  */
+		/*! \brief Index of the section containing the symbol */
 		uint16_t section_index() const {
 			return this->_data->st_shndx;
 		}
 
-		/*! \brief Section containing the symbol  */
+		/*! \brief Is the symbol undefined (extern)? */
+		bool undefined() const {
+			return section_index() == Def::SHN_UNDEF;
+		}
+
+		/*! \brief Section containing the symbol */
 		Section section() const {
 			return this->_elf.sections.at(section_index());
 		}
