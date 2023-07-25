@@ -415,12 +415,32 @@ struct Relocator : private ELF_Def::Constants {
 		}
 	}
 
+	/*! \brief Check if value will fit in space
+	 * \param value value intended to be written at target
+	 * \return true if value fits in relocation
+	 */
+	bool valid_value(uintptr_t value) const {
+		switch (size()) {
+			case 0: return value == 0;
+			case 1: return static_cast<int8_t>(value) == static_cast<intptr_t>(value);
+			case 2: return static_cast<int16_t>(value) == static_cast<intptr_t>(value);
+			case 4: return static_cast<int32_t>(value) == static_cast<intptr_t>(value);
+			case 8: return static_cast<int64_t>(value) == static_cast<intptr_t>(value);
+			case 16: return true;
+			default:
+				assert(false);
+				return 0;
+		}
+	}
+
+
 	/*! \brief Write a new value to target address
 	 * \param base base address
 	 * \param value new value to write at target
 	 * \return new value
 	 */
 	uintptr_t write_value(uintptr_t base, uintptr_t value) const {
+		assert(valid_value(value));
 		const uintptr_t mem = address(base);
 
 		switch (size()) {
@@ -455,7 +475,6 @@ struct Relocator : private ELF_Def::Constants {
 		}
 	}
 
-
 	/*! \brief Apply relocation for external symbol with a precalculated value
 	 * \param base Base address in target memory of the object to which this relocation belongs to
 	 * \param symbol (External) Symbol in another object
@@ -484,7 +503,7 @@ struct Relocator : private ELF_Def::Constants {
 	 */
 	template<typename Symbol>
 	inline uintptr_t fix_external(uintptr_t base, const Symbol & symbol, uintptr_t symbol_base, uintptr_t plt_entry = 0, uintptr_t tls_module_id = 0, intptr_t tls_offset = 0) const {
-		assert(symbol.section_index() != SHN_UNDEF);
+		assert(!symbol.undefined());
 		return fix_value_external(base, symbol, value_external(base, symbol, symbol_base, plt_entry, tls_module_id, tls_offset));
 	}
 
