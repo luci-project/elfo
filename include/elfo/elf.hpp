@@ -550,7 +550,7 @@ class ELF : public ELF_Def::Structures<C> {
 		/*! \brief Symbol name */
 		const char * name() const {
 			assert(strtaboff != 0);
-			auto name = reinterpret_cast<const char *>(this->_elf.start() + strtaboff + this->_data->st_name);
+			const char * name = reinterpret_cast<const char *>(this->_elf.start() + strtaboff + this->_data->st_name);
 			// Use section name for unnamed section symbols
 			if (name[0] == '\0' && type()== Def::STT_SECTION)
 				return section().name();

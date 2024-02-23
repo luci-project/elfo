@@ -78,7 +78,7 @@ lint::
 	fi
 
 tidy:: $(TIDYCONFIG) $(GENFILES)
-	$(VERBOSE) $(TIDY) --config-file=$< $(filter-out $(GENFILES),$(SOURCES)) -- -stdlib=libc++  $(CXXFLAGS)
+	$(VERBOSE) $(TIDY) --config-file=$< $(filter-out $(GENFILES),$(SOURCES)) -- -stdlib=libc++ $(CXXFLAGS)
 
 install: $(TARGETS)
 	$(VERBOSE) install -Dm755 $^ $(INSTALLDIR)
