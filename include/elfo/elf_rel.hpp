@@ -89,16 +89,22 @@ struct Relocator : private ELF_Def::Constants {
 	 * \param plt_entry PLT entry of the symbol
 	 * \param tls_module_id TLS module ID of (external) symbol
 	 * \param tls_offset TLS offset (from thread pointer / %fs) of (external) symbol
+	 * \param dry_run Do not perform memory operations (like IFUNC)
+	 * \return calculated value
 	 */
 	template<typename Symbol>
-	uintptr_t value(uintptr_t base, const Symbol & symbol, uintptr_t symbol_base, uintptr_t plt_entry = 0, uintptr_t tls_module_id = 0, intptr_t tls_offset = 0) const {
+	uintptr_t value(uintptr_t base, const Symbol & symbol, uintptr_t symbol_base, uintptr_t plt_entry = 0, uintptr_t tls_module_id = 0, intptr_t tls_offset = 0, bool dry_run = false) const {
+		uintptr_t symbol_address = symbol_base + symbol.value();
+		if (symbol.type() == STT_GNU_IFUNC && !dry_run)
+			symbol_address = ifunc(symbol_address);
+
 		const intptr_t A = entry.addend();
 		const uintptr_t B = base;
-		const uintptr_t G = symbol_base + symbol.value();
+		const uintptr_t G = symbol_address;
 		const uintptr_t GOT = global_offset_table;
 		const uintptr_t L = plt_entry;
 		const uintptr_t P = address(base);
-		const uintptr_t S = symbol_base + symbol.value();
+		const uintptr_t S = symbol_address;
 		const uintptr_t Z = symbol.size();
 
 		switch (entry.elf().header.machine()) {
@@ -233,8 +239,12 @@ struct Relocator : private ELF_Def::Constants {
 			}
 	}
 
-	inline uintptr_t value(uintptr_t base, uintptr_t plt_entry = 0, uintptr_t tls_module_id = 0, intptr_t tls_offset = 0) const {
-		return value(base, entry.symbol(), base, plt_entry, tls_module_id, tls_offset);
+	/*! \brief Get relocation value (dry run)
+	 * \note Perform memcopy or call indirect function if required
+	 * \return calculated value
+	 */
+	inline uintptr_t value() const {
+		return value(0, entry.symbol(), 0, 0, 0, 0, true);
 	}
 
 	/*! \brief Get relocation fix value (for external symbol)
@@ -245,19 +255,15 @@ struct Relocator : private ELF_Def::Constants {
 	 * \param plt_entry PLT entry of the symbol
 	 * \param tls_module_id TLS module ID of (external) symbol
 	 * \param tls_offset TLS offset (from thread pointer / %fs) of (external) symbol
+	 * \return calculated value
 	 */
 	template<typename Symbol>
 	inline uintptr_t value_external(uintptr_t base, const Symbol & symbol, uintptr_t symbol_base, uintptr_t plt_entry = 0, uintptr_t tls_module_id = 0, intptr_t tls_offset = 0) const {
 		auto v = value(base, symbol, symbol_base, plt_entry, tls_module_id, tls_offset);
-		if ((symbol.type() == STT_GNU_IFUNC || is_indirect())) {
-			assert(v != NULL);
-			typedef uintptr_t (*indirect_t)();
-			indirect_t func = reinterpret_cast<indirect_t>(v);
-			auto r = func();
-			return r;
-		} else {
+		if (is_indirect())
+			return ifunc(v);
+		else
 			return v;
-		}
 	}
 
 	/*! \brief Get relocation fix value for internal symbol
@@ -265,6 +271,7 @@ struct Relocator : private ELF_Def::Constants {
 	 * \param plt_entry PLT entry of the symbol
 	 * \param tls_module_id TLS module ID of (external) symbol
 	 * \param tls_offset TLS offset (from thread pointer / %fs) of (external) symbol
+	 * \return calculated value
 	 */
 	inline uintptr_t value_internal(uintptr_t base, uintptr_t plt_entry = 0, uintptr_t tls_module_id = 0, intptr_t tls_offset = 0) const {
 		return value_external(base, entry.symbol(), base, plt_entry, tls_module_id, tls_offset);
@@ -534,6 +541,18 @@ struct Relocator : private ELF_Def::Constants {
 	}
 
  private:
+	/*! \brief Call indirect function
+	* \param ptr address of function resolving the symbol
+	* \return resolved address
+	*/
+	inline uintptr_t ifunc(uintptr_t ptr) const {
+		assert(ptr != NULL);
+		typedef uintptr_t (*indirect_t)();
+		indirect_t func = reinterpret_cast<indirect_t>(ptr);
+		auto r = func();
+		return r;
+	}
+
 	/*! \brief Read from a specific memory address
 	* \tparam T size of value
 	* \param mem memory address
